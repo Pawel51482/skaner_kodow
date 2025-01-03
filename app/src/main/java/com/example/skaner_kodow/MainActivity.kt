@@ -1,110 +1,103 @@
 package com.example.skaner_kodow
 
-import android.Manifest
 import android.content.Intent
-import android.content.pm.PackageManager
-import android.graphics.Bitmap
 import android.os.Bundle
-import android.provider.MediaStore
-import android.widget.Button
+import android.view.Menu
 import android.widget.TextView
+import com.google.android.material.snackbar.Snackbar
+import com.google.android.material.navigation.NavigationView
+import androidx.navigation.findNavController
+import androidx.navigation.ui.AppBarConfiguration
+import androidx.navigation.ui.navigateUp
+import androidx.navigation.ui.setupActionBarWithNavController
+import androidx.navigation.ui.setupWithNavController
+import androidx.drawerlayout.widget.DrawerLayout
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
-import com.google.mlkit.vision.barcode.BarcodeScanning
-import com.google.mlkit.vision.common.InputImage
+import com.example.skaner_kodow.databinding.ActivityMainBinding
+import com.google.firebase.auth.FirebaseAuth
 
 class MainActivity : AppCompatActivity() {
 
-    private lateinit var tvResult: TextView
-    private lateinit var btnScanBarcode: Button
-    private val REQUEST_IMAGE_CAPTURE = 1
-    private val CAMERA_PERMISSION_REQUEST_CODE = 100
+    private lateinit var appBarConfiguration: AppBarConfiguration
+    private lateinit var binding: ActivityMainBinding
+    private lateinit var firebaseAuth: FirebaseAuth
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
 
-        tvResult = findViewById(R.id.tvResult)
-        btnScanBarcode = findViewById(R.id.btnScanBarcode)
+        binding = ActivityMainBinding.inflate(layoutInflater)
+        setContentView(binding.root)
 
+        firebaseAuth = FirebaseAuth.getInstance()
 
-        if (!hasCameraPermission()) {
-            requestCameraPermission()
-        } else {
-            enableButton()
+        setSupportActionBar(binding.appBarMain.toolbar)
+
+        binding.appBarMain.fab.setOnClickListener { view ->
+            Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
+                .setAction("Action", null)
+                .setAnchorView(R.id.fab).show()
         }
-    }
 
-    private fun hasCameraPermission(): Boolean {
-        val cameraPermission = ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
-        return cameraPermission == PackageManager.PERMISSION_GRANTED
-    }
+        //wyświetlenie emaila użytkownika w menu
+        val user = firebaseAuth.currentUser
+        val userEmail = user?.email
+        if (userEmail != null) {
+            val navView: NavigationView = binding.navView
+            val headerView = navView.getHeaderView(0)
 
-    private fun requestCameraPermission() {
-        ActivityCompat.requestPermissions(
-            this,
-            arrayOf(Manifest.permission.CAMERA),
-            CAMERA_PERMISSION_REQUEST_CODE
+            val textViewEmail: TextView = headerView.findViewById(R.id.textViewEmail)
+            textViewEmail.text = userEmail
+        }
+
+        val drawerLayout: DrawerLayout = binding.drawerLayout
+        val navView: NavigationView = binding.navView
+        val navController = findNavController(R.id.nav_host_fragment_content_main)
+        // Passing each menu ID as a set of Ids because each
+        // menu should be considered as top level destinations.
+        appBarConfiguration = AppBarConfiguration(
+            setOf(
+                R.id.nav_home, R.id.nav_gallery, R.id.nav_slideshow
+            ), drawerLayout
         )
-    }
+        setupActionBarWithNavController(navController, appBarConfiguration)
+        navView.setupWithNavController(navController)
 
-    private fun enableButton() {
-        btnScanBarcode.setOnClickListener {
-            dispatchTakePictureIntent()
+        //Wylogowyywanie użytkownika
+        navView.setNavigationItemSelectedListener { menuItem ->
+            when (menuItem.itemId) {
+                R.id.nav_logout -> {
+                    firebaseAuth.signOut()
+
+                    val intent = Intent(this, LoginActivity::class.java)
+                    startActivity(intent)
+                    finish()
+                    true
+                }
+                else -> {
+                    findNavController(R.id.nav_host_fragment_content_main).navigate(menuItem.itemId)
+                    binding.drawerLayout.closeDrawers()
+                    true
+                }
+            }
         }
     }
 
-    private fun dispatchTakePictureIntent() {
-        val takePictureIntent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
-        val activities = packageManager.queryIntentActivities(takePictureIntent, PackageManager.MATCH_DEFAULT_ONLY)
-        if (activities.isNotEmpty()) {
-            startActivityForResult(takePictureIntent, REQUEST_IMAGE_CAPTURE)
-        } else {
-            tvResult.text = "Nie znaleziono aplikacji kamery"
-        }
+    override fun onCreateOptionsMenu(menu: Menu): Boolean {
+        // Inflate the menu; this adds items to the action bar if it is present.
+        menuInflater.inflate(R.menu.main, menu)
+        return true
     }
 
+    override fun onSupportNavigateUp(): Boolean {
+        val navController = findNavController(R.id.nav_host_fragment_content_main)
+        return navController.navigateUp(appBarConfiguration) || super.onSupportNavigateUp()
+    }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == RESULT_OK) {
-            val imageBitmap = data?.extras?.get("data") as? Bitmap
-            if (imageBitmap != null) {
-                processBarcodeFromImage(imageBitmap)
-            } else {
-                tvResult.text = "Nie udało się uzyskać zdjęcia"
-            }
-        }
-    }
-
-    private fun processBarcodeFromImage(image: Bitmap) {
-        val inputImage = InputImage.fromBitmap(image, 0)
-        val scanner = BarcodeScanning.getClient()
-
-        scanner.process(inputImage)
-            .addOnSuccessListener { barcodes ->
-                if (barcodes.isNotEmpty()) {
-                    val barcodeValue = barcodes.first().rawValue ?: "Nie rozpoznano kodu"
-                    tvResult.text = "Zeskanowany kod: $barcodeValue"
-                } else {
-                    tvResult.text = "Nie znaleziono żadnego kodu kreskowego."
-                }
-            }
-            .addOnFailureListener {
-                tvResult.text = "Błąd podczas skanowania: ${it.message}"
-            }
-    }
-
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == CAMERA_PERMISSION_REQUEST_CODE) {
-            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                enableButton()
-                tvResult.text = "Uprawnienia do kamery przyznane"
-            } else {
-                tvResult.text = "Brak uprawnień do kamery"
-            }
+        val navHostFragment = supportFragmentManager.findFragmentById(R.id.nav_host_fragment_content_main)
+        navHostFragment?.childFragmentManager?.fragments?.forEach { fragment ->
+            fragment.onActivityResult(requestCode, resultCode, data)
         }
     }
 }
