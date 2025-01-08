@@ -1,129 +1,105 @@
 package com.example.skaner_kodow.ui.home
 
-import androidx.lifecycle.ViewModelProvider
-
-import android.Manifest
 import android.app.Activity
 import android.content.Intent
-import android.content.pm.PackageManager
-import android.graphics.Bitmap
 import android.os.Bundle
-import android.provider.MediaStore
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Button
-import android.widget.TextView
-import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
+import android.widget.Toast
 import androidx.fragment.app.Fragment
-import androidx.fragment.app.activityViewModels
+import androidx.fragment.app.viewModels
+import androidx.navigation.fragment.findNavController
+import com.example.skaner_kodow.BarcodeScannerActivity
+import com.example.skaner_kodow.R
 import com.example.skaner_kodow.databinding.FragmentHomeBinding
-import com.google.mlkit.vision.barcode.BarcodeScanning
-import com.google.mlkit.vision.common.InputImage
+import com.example.skaner_kodow.ui.products.Product
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.ValueEventListener
 
 class HomeFragment : Fragment() {
 
     private var _binding: FragmentHomeBinding? = null
     private val binding get() = _binding!!
+    private val SCAN_REQUEST_CODE = 1
 
-    private lateinit var tvResult: TextView
-    private lateinit var btnScanBarcode: Button
-
-    private val homeViewModel: HomeViewModel by activityViewModels()
-
-    private val REQUEST_IMAGE_CAPTURE = 1
-    private val CAMERA_PERMISSION_REQUEST_CODE = 100
+    private val homeViewModel: HomeViewModel by viewModels()
 
     override fun onCreateView(
-        inflater: LayoutInflater,
-        container: ViewGroup?,
-        savedInstanceState: Bundle?
+        inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
     ): View {
-        val homeViewModel =
-            ViewModelProvider(this).get(HomeViewModel::class.java)
-
         _binding = FragmentHomeBinding.inflate(inflater, container, false)
-        val root: View = binding.root
 
-        tvResult = binding.tvResult
-        btnScanBarcode = binding.btnScanBarcode
-
-        // Observing ViewModel's text live data
         homeViewModel.text.observe(viewLifecycleOwner) { text ->
-            tvResult.text = text
+            binding.tvResult.text = text
         }
 
-        if (!hasCameraPermission()) {
-            requestCameraPermission()
-        } else {
-            enableScanButton()
+        binding.btnOpenScanner.setOnClickListener {
+            val intent = Intent(requireContext(), BarcodeScannerActivity::class.java)
+            startActivityForResult(intent, SCAN_REQUEST_CODE)
         }
 
-        return root
-    }
-
-    private fun hasCameraPermission(): Boolean {
-        val cameraPermission = ContextCompat.checkSelfPermission(
-            requireContext(),
-            Manifest.permission.CAMERA
-        )
-        return cameraPermission == PackageManager.PERMISSION_GRANTED
-    }
-
-    private fun requestCameraPermission() {
-        ActivityCompat.requestPermissions(
-            requireActivity(),
-            arrayOf(Manifest.permission.CAMERA),
-            CAMERA_PERMISSION_REQUEST_CODE
-        )
-    }
-
-    private fun enableScanButton() {
-        btnScanBarcode.setOnClickListener {
-            dispatchTakePictureIntent()
-        }
-    }
-
-    private fun dispatchTakePictureIntent() {
-        val takePictureIntent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
-        val activities = requireActivity().packageManager.queryIntentActivities(takePictureIntent, PackageManager.MATCH_DEFAULT_ONLY)
-        if (activities.isNotEmpty()) {
-            startActivityForResult(takePictureIntent, REQUEST_IMAGE_CAPTURE)
-        } else {
-            tvResult.text = "Nie znaleziono aplikacji kamery"
-        }
+        return binding.root
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == Activity.RESULT_OK) {
-            val imageBitmap = data?.extras?.get("data") as? Bitmap
-            if (imageBitmap != null) {
-                processBarcodeFromImage(imageBitmap)
+        if (requestCode == SCAN_REQUEST_CODE && resultCode == Activity.RESULT_OK && data != null) {
+            val scannedCode = data.getStringExtra("scanned_code")
+            if (scannedCode != null) {
+                checkBarcodeInDatabase(scannedCode)
             } else {
-                tvResult.text = "Nie udało się uzyskać zdjęcia"
+                Toast.makeText(context, "Nie zeskanowano kodu", Toast.LENGTH_SHORT).show()
             }
         }
     }
 
-    private fun processBarcodeFromImage(image: Bitmap) {
-        val inputImage = InputImage.fromBitmap(image, 0)
-        val scanner = BarcodeScanning.getClient()
 
-        scanner.process(inputImage)
-            .addOnSuccessListener { barcodes ->
-                if (barcodes.isNotEmpty()) {
-                    val barcodeValue = barcodes.first().rawValue ?: "Nie rozpoznano kodu"
-                    tvResult.text = "Zeskanowany kod: $barcodeValue"
-                } else {
-                    tvResult.text = "Nie znaleziono żadnego kodu kreskowego."
+    private fun checkBarcodeInDatabase(barcode: String) {
+        val database = FirebaseDatabase.getInstance()
+        val productsRef = database.getReference("products")
+
+        productsRef.orderByChild("barcode").equalTo(barcode)
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    if (snapshot.exists()) {
+                        val productSnapshot = snapshot.children.first()
+                        val product = productSnapshot.getValue(Product::class.java)
+
+                        if (product != null) {
+                            homeViewModel.updateText("Znaleziono: ${product.name}\nKod: ${product.barcode}")
+
+                            binding.buttonDetails.apply {
+                                visibility = View.VISIBLE
+                                setOnClickListener {
+                                    val bundle = Bundle().apply {
+                                        putString("name", product.name)
+                                        putString("barcode", product.barcode)
+                                        putString("description", product.description)
+                                        putString("imageUrl", product.imageUrl)
+                                    }
+                                    findNavController().navigate(
+                                        R.id.action_homeFragment_to_productDetailsFragment,
+                                        bundle
+                                    )
+                                }
+                            }
+                        }
+                    } else {
+                        homeViewModel.updateText("Nie znaleziono kodu w bazie: $barcode")
+                        binding.buttonDetails.visibility = View.GONE
+                    }
                 }
-            }
-            .addOnFailureListener {
-                tvResult.text = "Błąd podczas skanowania: ${it.message}"
-            }
+
+                override fun onCancelled(error: DatabaseError) {
+                    Toast.makeText(context, "Błąd: ${error.message}", Toast.LENGTH_SHORT).show()
+                }
+            })
     }
+
+
 
     override fun onDestroyView() {
         super.onDestroyView()

@@ -38,6 +38,7 @@
             android:label="@string/app_name"
             android:theme="@style/Theme.Skaner_kodow.NoActionBar"/>
         <activity android:name=".RegisterActivity"/>
+        <activity android:name=".BarcodeScannerActivity"/>
 
     </application>
 

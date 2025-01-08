@@ -1,6 +1,7 @@
 {
   "project_info": {
     "project_number": "324338303824",
+	"firebase_url": "https://skaner-kodow-4fc72-default-rtdb.europe-west1.firebasedatabase.app",
     "project_id": "skaner-kodow-4fc72",
     "storage_bucket": "skaner-kodow-4fc72.firebasestorage.app"
   },
