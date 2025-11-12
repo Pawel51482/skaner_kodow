@@ -3,12 +3,18 @@ package com.example.skaner_kodow
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.os.Bundle
+import android.view.Gravity
+import android.util.Patterns
 import android.widget.Button
 import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseAuthException
+import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
+import com.google.firebase.auth.FirebaseAuthUserCollisionException
+import com.google.firebase.auth.FirebaseAuthWeakPasswordException
 import com.google.firebase.database.FirebaseDatabase
 
 class RegisterActivity : AppCompatActivity() {
@@ -32,38 +38,46 @@ class RegisterActivity : AppCompatActivity() {
         tvLogin = findViewById(R.id.tvLogin)
 
         firebaseAuth = FirebaseAuth.getInstance()
+        firebaseAuth.setLanguageCode("pl")
 
         btnRegister.setOnClickListener {
             val email = etEmail.text.toString().trim()
             val password = etPassword.text.toString().trim()
             val confirmPassword = etConfirmPassword.text.toString().trim()
 
-            if (email.isNotEmpty() && password.isNotEmpty() && confirmPassword.isNotEmpty()) {
-                if (password == confirmPassword) {
-                    firebaseAuth.createUserWithEmailAndPassword(email, password)
-                        .addOnCompleteListener { task ->
-                            if (task.isSuccessful) {
-                                // po utworzeniu konta dopisz profil w /users/{uid} jeśli nie istnieje
-                                createUserProfile()
-
-                                Toast.makeText(this, "Rejestracja udana", Toast.LENGTH_SHORT).show()
-                                val intent = Intent(this, LoginActivity::class.java)
-                                startActivity(intent)
-                                finish()
-                            } else {
-                                Toast.makeText(
-                                    this,
-                                    "Rejestracja nie powiodła się: ${task.exception?.message}",
-                                    Toast.LENGTH_SHORT
-                                ).show()
-                            }
-                        }
-                } else {
-                    Toast.makeText(this, "Hasła się nie zgadzają", Toast.LENGTH_SHORT).show()
-                }
-            } else {
-                Toast.makeText(this, "Proszę wypełnić wszystkie pola", Toast.LENGTH_SHORT).show()
+            // kolejność walidacji
+            if (email.isEmpty() || password.isEmpty() || confirmPassword.isEmpty()) {
+                showToast("Proszę wypełnić wszystkie pola")
+                return@setOnClickListener
             }
+            if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+                showToast("Nieprawidłowy adres e-mail")
+                return@setOnClickListener
+            }
+            if (password.length < 6) {
+                showToast("Hasło jest zbyt krótkie (min. 6 znaków).")
+                return@setOnClickListener
+            }
+            if (password != confirmPassword) {
+                showToast("Hasła się nie zgadzają")
+                return@setOnClickListener
+            }
+
+            // Jeśli lokalna walidacja przeszła, dopiero wtedy wołamy Firebase
+            firebaseAuth.createUserWithEmailAndPassword(email, password)
+                .addOnCompleteListener { task ->
+                    if (task.isSuccessful) {
+                        // po utworzeniu konta dopisz profil w /users/{uid} jeśli nie istnieje
+                        createUserProfile()
+
+                        showToast("Rejestracja udana")
+                        val intent = Intent(this, LoginActivity::class.java)
+                        startActivity(intent)
+                        finish()
+                    } else {
+                        showToast(polishAuthMessage(task.exception))
+                    }
+                }
         }
 
         tvLogin.setOnClickListener {
@@ -90,5 +104,28 @@ class RegisterActivity : AppCompatActivity() {
             .addOnFailureListener {
                 // cicho ignorujemy błąd — nie blokujemy rejestracji
             }
+    }
+
+    private fun showToast(msg: String) {
+        val t = Toast.makeText(this, msg, Toast.LENGTH_SHORT)
+        t.setGravity(Gravity.CENTER, 0, 0)
+        t.show()
+    }
+
+    // Tłumaczenie wyjątków na Polskie
+    private fun polishAuthMessage(e: Exception?): String {
+        return when (e) {
+            is FirebaseAuthWeakPasswordException -> "Hasło jest zbyt krótkie (min. 6 znaków)"
+            is FirebaseAuthInvalidCredentialsException -> "Nieprawidłowy adres e-mail"
+            is FirebaseAuthUserCollisionException -> "Konto z tym adresem już istnieje"
+            is FirebaseAuthException -> when (e.errorCode) {
+                "ERROR_INVALID_EMAIL" -> "Nieprawidłowy adres e-mail"
+                "ERROR_EMAIL_ALREADY_IN_USE" -> "Ten e-mail jest już zajęty"
+                "ERROR_OPERATION_NOT_ALLOWED" -> "Operacja niedostępna. Skontaktuj się z administratorem"
+                "ERROR_WEAK_PASSWORD" -> "Hasło jest zbyt krótkie (min. 6 znaków)"
+                else -> "Wystąpił błąd: ${e.errorCode.replace('_',' ').lowercase()}"
+            }
+            else -> "Wystąpił nieoczekiwany błąd. Spróbuj ponownie."
+        }
     }
 }
