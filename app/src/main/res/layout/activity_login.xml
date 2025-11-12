@@ -50,6 +50,19 @@
         android:focusable="true"
         android:minHeight="48dp"
         android:text="Nie masz konta? Zarejestruj się"
+        android:textColor="#007BFF"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/tvForgotPassword"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:clickable="true"
+        android:focusable="true"
+        android:minHeight="48dp"
+        android:paddingTop="8dp"
+        android:text="Nie pamiętasz hasła?"
+        android:textAlignment="center"
         android:textColor="#007BFF" />
 
 </LinearLayout>
