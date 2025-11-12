@@ -29,6 +29,11 @@
             android:title="Promocje" />
 
         <item
+            android:id="@+id/nav_account"
+            android:title="Moje konto"
+            android:icon="@drawable/ic_person" />
+
+        <item
             android:id="@+id/nav_logout"
             android:icon="@drawable/ic_logout"
             android:title="Wylogowanie"/>
