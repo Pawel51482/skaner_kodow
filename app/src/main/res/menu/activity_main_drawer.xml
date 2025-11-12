@@ -24,9 +24,15 @@
             android:title="Produkty" />
 
         <item
+            android:id="@+id/nav_promotions"
+            android:icon="@drawable/ic_promotions"
+            android:title="Promocje" />
+
+        <item
             android:id="@+id/nav_logout"
             android:icon="@drawable/ic_logout"
             android:title="Wylogowanie"/>
+
 
     </group>
 </menu>

@@ -15,6 +15,9 @@ import com.example.skaner_kodow.databinding.FragmentAddProductBinding
 import com.example.skaner_kodow.utils.ImgurUploader
 import com.google.firebase.database.FirebaseDatabase
 import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class AddProductFragment : Fragment() {
 
@@ -22,7 +25,6 @@ class AddProductFragment : Fragment() {
     private val PICK_IMAGE_REQUEST = 1
     private var selectedImageUrl: String? = null
     private val SCAN_BARCODE_REQUEST = 2
-
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -36,7 +38,6 @@ class AddProductFragment : Fragment() {
             startActivityForResult(intent, SCAN_BARCODE_REQUEST)
         }
 
-
         binding.buttonAddImage.setOnClickListener {
             val intent = Intent(Intent.ACTION_PICK)
             intent.type = "image/*"
@@ -44,18 +45,23 @@ class AddProductFragment : Fragment() {
         }
 
         binding.buttonAddProduct.setOnClickListener {
-            val productName = binding.editTextProductName.text.toString()
-            val productBarcode = binding.inputBarcode.text.toString()
-            val productDescription = binding.inputDescription.text.toString()
+            val productName = binding.editTextProductName.text.toString().trim()
+            val productBarcode = binding.inputBarcode.text.toString().trim()
+            val productDescription = binding.inputDescription.text.toString().trim()
+            val priceText = binding.editTextPrice.text.toString().trim()
+            val priceDouble = priceText.toDoubleOrNull() ?: 0.0
+            val today = SimpleDateFormat("dd-MM-yyyy", Locale.getDefault()).format(Date())
+
             if (productName.isNotEmpty() && selectedImageUrl != null) {
-                saveProductToDatabase(
-                    Product(
-                        name = productName,
-                        barcode = productBarcode,
-                        imageUrl = selectedImageUrl!!,
-                        description = productDescription
-                    )
+                val product = Product(
+                    name = productName,
+                    barcode = productBarcode,
+                    imageUrl = selectedImageUrl!!,
+                    description = productDescription,
+                    price = priceDouble,
+                    priceUpdatedAt = today
                 )
+                saveProductToDatabase(product)
             } else {
                 Toast.makeText(context, "Uzupełnij wszystkie pola", Toast.LENGTH_SHORT).show()
             }
@@ -69,19 +75,19 @@ class AddProductFragment : Fragment() {
         if (requestCode == SCAN_BARCODE_REQUEST && resultCode == Activity.RESULT_OK && data != null) {
             val scannedCode = data.getStringExtra("scanned_code")
             if (scannedCode != null) {
-                binding.inputBarcode.setText(scannedCode) // Wstaw zeskanowany kod
+                binding.inputBarcode.setText(scannedCode)
             } else {
                 Toast.makeText(context, "Nie zeskanowano kodu", Toast.LENGTH_SHORT).show()
             }
         }
-
 
         if (requestCode == PICK_IMAGE_REQUEST && resultCode == Activity.RESULT_OK && data != null) {
             val imageUri = data.data
             if (imageUri != null) {
                 val imageFile = getFileFromUri(imageUri)
                 if (imageFile != null) {
-                    ImgurUploader.uploadImage(imageFile,
+                    ImgurUploader.uploadImage(
+                        imageFile,
                         onSuccess = { imageUrl ->
                             activity?.runOnUiThread {
                                 Glide.with(this)
@@ -92,7 +98,11 @@ class AddProductFragment : Fragment() {
                         },
                         onError = { exception ->
                             activity?.runOnUiThread {
-                                Toast.makeText(context, "Błąd przesyłania obrazu: ${exception.message}", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(
+                                    context,
+                                    "Błąd przesyłania obrazu: ${exception.message}",
+                                    Toast.LENGTH_SHORT
+                                ).show()
                             }
                         }
                     )
@@ -103,11 +113,11 @@ class AddProductFragment : Fragment() {
         }
     }
 
-
     private fun getFileFromUri(uri: android.net.Uri): File? {
         return try {
             val inputStream = requireContext().contentResolver.openInputStream(uri)
-            val tempFile = File.createTempFile("temp_image", ".jpg", requireContext().cacheDir)
+            val tempFile =
+                File.createTempFile("temp_image", ".jpg", requireContext().cacheDir)
             tempFile.outputStream().use { outputStream ->
                 inputStream?.copyTo(outputStream)
             }
@@ -129,7 +139,11 @@ class AddProductFragment : Fragment() {
                     findNavController().popBackStack()
                 }
                 .addOnFailureListener {
-                    Toast.makeText(context, "Błąd podczas dodawania produktu", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(
+                        context,
+                        "Błąd podczas dodawania produktu",
+                        Toast.LENGTH_SHORT
+                    ).show()
                 }
         } else {
             Toast.makeText(context, "Błąd: nie udało się dodać produktu", Toast.LENGTH_SHORT).show()

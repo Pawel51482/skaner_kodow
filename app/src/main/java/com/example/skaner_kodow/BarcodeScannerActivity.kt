@@ -1,7 +1,10 @@
 package com.example.skaner_kodow
 
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Bundle
+import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.OptIn
 import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.core.*
@@ -21,6 +24,16 @@ class BarcodeScannerActivity : AppCompatActivity() {
     private lateinit var cameraExecutor: ExecutorService
     private var isProcessing = false
 
+    private val requestCameraPermission =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            if (granted) startCamera()
+            else {
+                Toast.makeText(this, "Brak uprawnień do kamery", Toast.LENGTH_SHORT).show()
+                finish()
+            }
+        }
+
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_barcode_scanner)
@@ -28,7 +41,12 @@ class BarcodeScannerActivity : AppCompatActivity() {
         previewView = findViewById(R.id.previewView)
         cameraExecutor = Executors.newSingleThreadExecutor()
 
-        startCamera()
+        if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.CAMERA)
+            == PackageManager.PERMISSION_GRANTED) {
+            startCamera()
+        } else {
+            requestCameraPermission.launch(android.Manifest.permission.CAMERA)
+        }
     }
 
     private fun startCamera() {

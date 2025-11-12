@@ -6,34 +6,47 @@ import androidx.lifecycle.ViewModel
 import com.google.firebase.database.FirebaseDatabase
 
 data class Product(
+    val id: String = "",
     val name: String = "",
     val barcode: String = "",
     val imageUrl: String = "",
-    val description: String = ""
+    val description: String = "",
+    val price: Double = 0.0,
+    val priceUpdatedAt: String = ""
 )
 
 class ProductsViewModel : ViewModel() {
 
     private val _products = MutableLiveData<List<Product>>()
-
     private val _filteredProducts = MutableLiveData<List<Product>>()
     val filteredProducts: LiveData<List<Product>> get() = _filteredProducts
 
+    private val ref = FirebaseDatabase.getInstance().getReference("products")
+
     fun fetchProducts() {
-        val databaseRef = FirebaseDatabase.getInstance().getReference("products")
-        databaseRef.get().addOnSuccessListener { snapshot ->
-            val productsList = snapshot.children.mapNotNull { it.getValue(Product::class.java) }
-            _products.value = productsList
-            _filteredProducts.value = productsList
-        }.addOnFailureListener { exception ->
-        }
+        ref.get()
+            .addOnSuccessListener { snapshot ->
+                val list = snapshot.children.map { snap ->
+                    val p = snap.getValue(Product::class.java)
+                    // wstrzykujemy klucz jako id
+                    p?.copy(id = snap.key ?: "")
+                }.filterNotNull()
+
+                _products.value = list
+                _filteredProducts.value = list
+            }
     }
 
     fun filterProducts(query: String) {
-        val filteredList = _products.value?.filter { product ->
-            product.name.contains(query, ignoreCase = true) ||
-                    product.description.contains(query, ignoreCase = true)
+        val base = _products.value ?: emptyList()
+        _filteredProducts.value = base.filter {
+            it.name.contains(query, true) ||
+                    it.description.contains(query, true)
         }
-        _filteredProducts.value = filteredList!!
+    }
+
+    fun deleteProduct(id: String) {
+        if (id.isEmpty()) return
+        ref.child(id).removeValue()
     }
 }

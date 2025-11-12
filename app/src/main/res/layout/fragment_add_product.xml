@@ -78,6 +78,15 @@
             android:inputType="textMultiLine"
             android:minLines="3" />
 
+        <EditText
+            android:id="@+id/editTextPrice"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Cena (np. 12.99)"
+            android:inputType="numberDecimal"
+            android:layout_marginTop="8dp"/>
+
+
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"

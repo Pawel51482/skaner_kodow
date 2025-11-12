@@ -4,21 +4,22 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
+import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.skaner_kodow.R
 import com.example.skaner_kodow.databinding.FragmentProductsBinding
-import androidx.appcompat.widget.SearchView
-import androidx.navigation.fragment.findNavController
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.FirebaseDatabase
 
 class ProductsFragment : Fragment() {
 
     private lateinit var binding: FragmentProductsBinding
     private lateinit var viewModel: ProductsViewModel
+    private var isAdmin: Boolean = false
     private lateinit var adapter: ProductsAdapter
-    private val adminEmails = listOf("test@test.pl")
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -28,49 +29,107 @@ class ProductsFragment : Fragment() {
         binding = FragmentProductsBinding.inflate(inflater, container, false)
         viewModel = ViewModelProvider(this).get(ProductsViewModel::class.java)
 
-        setupRecyclerView()
-        setupObservers()
-        setupSearchView()
-
+        // najpierw sprawdzamy czy admin, potem ustawiamy listę
+        checkIfAdminAndSetup()
 
         binding.addProductButton.setOnClickListener {
-            navigateToAddProduct()
+            findNavController().navigate(R.id.action_nav_products_to_addProductFragment)
+        }
+
+        viewModel.filteredProducts.observe(viewLifecycleOwner) { list ->
+            adapter.submitList(list)
         }
 
         viewModel.fetchProducts()
 
-        if (!isAdmin()) {
-            binding.addProductButton.visibility = View.GONE
-        }
+        setupSearch()
 
         return binding.root
     }
 
-    private fun isAdmin(): Boolean {
-        val currentUserEmail = FirebaseAuth.getInstance().currentUser?.email
-        return currentUserEmail != null && adminEmails.contains(currentUserEmail)
-    }
-
-    private fun navigateToAddProduct() {
-        findNavController().navigate(R.id.action_nav_products_to_addProductFragment)
-    }
-
-    private fun setupRecyclerView() {
-        adapter = ProductsAdapter { product ->
-            navigateToProductDetails(product)
+    private fun checkIfAdminAndSetup() {
+        val currentUser = FirebaseAuth.getInstance().currentUser
+        if (currentUser == null) {
+            setupRecyclerView(false)
+            return
         }
+
+        val uid = currentUser.uid
+        FirebaseDatabase.getInstance().getReference("users")
+            .child(uid)
+            .get()
+            .addOnSuccessListener { snap ->
+                val role = snap.child("role").getValue(String::class.java)
+                isAdmin = role == "admin"
+                setupRecyclerView(isAdmin)
+            }
+            .addOnFailureListener {
+                setupRecyclerView(false)
+            }
+    }
+
+    private fun setupRecyclerView(isAdmin: Boolean) {
+        adapter = ProductsAdapter(
+            isAdmin = isAdmin,
+            onProductClick = { product ->
+                navigateToProductDetails(product)
+            },
+            onProductLongClick = { product ->
+                // tylko admin tu wchodzi
+                showAdminMenu(product)
+            }
+        )
         binding.recyclerViewProducts.layoutManager = LinearLayoutManager(requireContext())
         binding.recyclerViewProducts.adapter = adapter
-    }
 
-    private fun setupObservers() {
-        viewModel.filteredProducts.observe(viewLifecycleOwner) { products ->
-            adapter.submitList(products)
+        // jeśli nie admin – schowaj przycisk dodawania
+        if (!isAdmin) {
+            binding.addProductButton.visibility = View.GONE
         }
     }
 
-    private fun setupSearchView() {
-        binding.searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
+    private fun showAdminMenu(product: Product) {
+        val options = arrayOf("Edytuj produkt", "Usuń produkt")
+        androidx.appcompat.app.AlertDialog.Builder(requireContext())
+            .setTitle("Opcje produktu")
+            .setItems(options) { _, which ->
+                when (which) {
+                    0 -> {
+                        // nawigacja do edycji
+                        val bundle = Bundle().apply {
+                            putString("id", product.id)
+                            putString("name", product.name)
+                            putString("barcode", product.barcode)
+                            putString("description", product.description)
+                            putString("imageUrl", product.imageUrl)
+                            putDouble("price", product.price)
+                            putString("priceUpdatedAt", product.priceUpdatedAt)
+                        }
+                        findNavController().navigate(
+                            R.id.editProductFragment,
+                            bundle
+                        )
+                    }
+                    1 -> {
+                        // potwierdzenie usunięcia
+                        androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                            .setTitle("Usuń produkt")
+                            .setMessage("Na pewno chcesz usunąć ten produkt?")
+                            .setPositiveButton("Usuń") { _, _ ->
+                                viewModel.deleteProduct(product.id)
+                                Toast.makeText(requireContext(), "Usunięto produkt", Toast.LENGTH_SHORT).show()
+                            }
+                            .setNegativeButton("Anuluj", null)
+                            .show()
+                    }
+                }
+            }
+            .show()
+    }
+
+    private fun setupSearch() {
+        binding.searchView.setOnQueryTextListener(object :
+            androidx.appcompat.widget.SearchView.OnQueryTextListener {
             override fun onQueryTextSubmit(query: String?): Boolean {
                 query?.let { viewModel.filterProducts(it) }
                 return true
@@ -89,7 +148,12 @@ class ProductsFragment : Fragment() {
             putString("barcode", product.barcode)
             putString("description", product.description)
             putString("imageUrl", product.imageUrl)
+            putDouble("price", product.price)
+            putString("priceUpdatedAt", product.priceUpdatedAt)
         }
-        findNavController().navigate(R.id.action_nav_products_to_productDetailsFragment, bundle)
+        findNavController().navigate(
+            R.id.action_nav_products_to_productDetailsFragment,
+            bundle
+        )
     }
 }

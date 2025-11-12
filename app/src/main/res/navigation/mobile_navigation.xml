@@ -55,4 +55,45 @@
         android:name="com.example.skaner_kodow.ui.products.ProductDetailsFragment"
         android:label="Szczegóły Produktu"
         tools:layout="@layout/fragment_product_details" />
+
+    <fragment
+        android:id="@+id/editProductFragment"
+        android:name="com.example.skaner_kodow.ui.products.EditProductFragment"
+        android:label="Edytuj produkt"
+        tools:layout="@layout/fragment_add_product" />
+
+
+    <!-- Ekran z listą promocji -->
+    <fragment
+        android:id="@+id/nav_promotions"
+        android:name="com.example.skaner_kodow.ui.promotions.PromotionsFragment"
+        android:label="Promocje"
+        tools:layout="@layout/fragment_promotions">
+
+        <!-- Akcja przejścia do formularza dodawania -->
+        <action
+            android:id="@+id/action_nav_promotions_to_addPromotionFragment"
+            app:destination="@id/addPromotionFragment" />
+    </fragment>
+
+    <!-- Ekran dodawania promocji -->
+    <fragment
+        android:id="@+id/addPromotionFragment"
+        android:name="com.example.skaner_kodow.ui.promotions.AddPromotionFragment"
+        android:label="Dodaj promocję"
+        tools:layout="@layout/fragment_add_promotion" />
+
+    <!-- edycja promocji-->
+    <fragment
+        android:id="@+id/editPromotionFragment"
+        android:name="com.example.skaner_kodow.ui.promotions.EditPromotionFragment"
+        android:label="Edytuj promocję"
+        tools:layout="@layout/fragment_add_promotion" />
+    <!-- Szczegóły promocji -->
+    <fragment
+        android:id="@+id/promotionDetailsFragment"
+        android:name="com.example.skaner_kodow.ui.promotions.PromotionDetailsFragment"
+        android:label="Szczegóły promocji"
+        tools:layout="@layout/fragment_promotion_details" />
+
 </navigation>

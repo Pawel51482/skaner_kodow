@@ -9,6 +9,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.FirebaseDatabase
 
 class RegisterActivity : AppCompatActivity() {
 
@@ -42,13 +43,19 @@ class RegisterActivity : AppCompatActivity() {
                     firebaseAuth.createUserWithEmailAndPassword(email, password)
                         .addOnCompleteListener { task ->
                             if (task.isSuccessful) {
+                                // po utworzeniu konta dopisz profil w /users/{uid} jeśli nie istnieje
+                                createUserProfile()
+
                                 Toast.makeText(this, "Rejestracja udana", Toast.LENGTH_SHORT).show()
                                 val intent = Intent(this, LoginActivity::class.java)
                                 startActivity(intent)
                                 finish()
                             } else {
-                                Toast.makeText(this, "Rejestracja nie powiodła się: ${task.exception?.message}",
-                                    Toast.LENGTH_SHORT).show()
+                                Toast.makeText(
+                                    this,
+                                    "Rejestracja nie powiodła się: ${task.exception?.message}",
+                                    Toast.LENGTH_SHORT
+                                ).show()
                             }
                         }
                 } else {
@@ -63,5 +70,25 @@ class RegisterActivity : AppCompatActivity() {
             val intent = Intent(this, LoginActivity::class.java)
             startActivity(intent)
         }
+    }
+
+    // Tworzy wpis w /users/{uid} z email i role:"user"
+    private fun createUserProfile() {
+        val user = firebaseAuth.currentUser ?: return
+        val usersRef = FirebaseDatabase.getInstance().getReference("users").child(user.uid)
+
+        usersRef.get()
+            .addOnSuccessListener { snap ->
+                if (!snap.exists()) {
+                    val data = mapOf(
+                        "email" to (user.email ?: ""),
+                        "role" to "user"
+                    )
+                    usersRef.setValue(data)
+                }
+            }
+            .addOnFailureListener {
+                // cicho ignorujemy błąd — nie blokujemy rejestracji
+            }
     }
 }

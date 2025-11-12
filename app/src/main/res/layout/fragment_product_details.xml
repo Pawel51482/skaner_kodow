@@ -28,6 +28,40 @@
         android:layout_marginBottom="16dp" />
 
     <TextView
+        android:id="@+id/textViewProductPrice"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:layout_marginTop="8dp"/>
+
+    <LinearLayout
+        android:id="@+id/promoInfoGroup"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:visibility="gone"
+        android:layout_marginTop="16dp">
+
+        <TextView
+            android:id="@+id/tvPromoInfo"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Dla tego produktu jest promocja."
+            android:textColor="@android:color/holo_green_dark"
+            android:textStyle="bold"
+            android:layout_marginBottom="8dp"/>
+
+        <Button
+            android:id="@+id/btnGoToPromotion"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Przejdź do szczegółów promocji" />
+
+    </LinearLayout>
+
+
+    <TextView
         android:id="@+id/textViewProductDescription"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

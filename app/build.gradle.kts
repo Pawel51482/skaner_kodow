@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -8,6 +10,12 @@ android {
     namespace = "com.example.skaner_kodow"
     compileSdk = 35
 
+    val localProps = Properties().apply {
+        val f = rootProject.file("local.properties")
+        if (f.exists()) {
+            f.inputStream().use { load(it) }
+        }
+    }
     defaultConfig {
         applicationId = "com.example.skaner_kodow"
         minSdk = 29
@@ -16,6 +24,9 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        val imgurClientId: String = localProps.getProperty("IMGUR_CLIENT_ID") ?: ""
+        buildConfigField("String", "IMGUR_CLIENT_ID", "\"$imgurClientId\"")
     }
 
     buildTypes {
@@ -36,6 +47,7 @@ android {
     }
     buildFeatures {
         viewBinding = true
+        buildConfig = true
     }
 }
 

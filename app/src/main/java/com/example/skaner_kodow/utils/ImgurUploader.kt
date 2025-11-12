@@ -6,10 +6,12 @@ import okhttp3.RequestBody.Companion.asRequestBody
 import org.json.JSONObject
 import java.io.File
 import java.io.IOException
+import com.example.skaner_kodow.BuildConfig
 
 object ImgurUploader {
 
-    private const val CLIENT_ID = "1798377d008aa2d" // Wstaw swój Client ID z Imgur
+    private const val CLIENT_ID = BuildConfig.IMGUR_CLIENT_ID
+
 
     fun uploadImage(imageFile: File, onSuccess: (String) -> Unit, onError: (Exception) -> Unit) {
         val client = OkHttpClient()
