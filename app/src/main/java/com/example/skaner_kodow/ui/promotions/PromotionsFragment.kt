@@ -35,6 +35,24 @@ class PromotionsFragment : Fragment() {
             findNavController().navigate(R.id.action_nav_promotions_to_addPromotionFragment)
         }
 
+        // ULUBIONE
+        adapter.setOnFavoriteClickListener { promoId ->
+            viewModel.toggleFavoritePromotion(promoId)
+        }
+
+        viewModel.observeFavoritePromotions()
+
+        viewModel.promotions.observe(viewLifecycleOwner) { all ->
+            val favs = viewModel.favPromotions.value.orEmpty()
+            adapter.submitFavorites(favs)
+            adapter.submitList(all)
+        }
+
+        viewModel.favPromotions.observe(viewLifecycleOwner) { favs ->
+            adapter.submitFavorites(favs)
+        }
+
+
         return binding.root
     }
 

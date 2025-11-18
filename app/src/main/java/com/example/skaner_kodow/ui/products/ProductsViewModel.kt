@@ -3,7 +3,11 @@ package com.example.skaner_kodow.ui.products
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.ValueEventListener
 
 data class Product(
     val id: String = "",
@@ -48,5 +52,34 @@ class ProductsViewModel : ViewModel() {
     fun deleteProduct(id: String) {
         if (id.isEmpty()) return
         ref.child(id).removeValue()
+    }
+
+
+    // Ulubione
+    private val auth = FirebaseAuth.getInstance()
+    private val db = FirebaseDatabase.getInstance()
+
+    private val _favProducts = MutableLiveData<Set<String>>()
+    val favProducts: LiveData<Set<String>> get() = _favProducts
+
+    // Nasłuchuje produkty i aktualizuje ulubione
+    fun observeFavoriteProducts() {
+        val uid = auth.currentUser?.uid ?: return
+        db.getReference("users/$uid/favorites/products")
+            .addValueEventListener(object : ValueEventListener {
+                override fun onDataChange(s: DataSnapshot) {
+                    _favProducts.postValue(s.children.mapNotNull { it.key }.toSet())
+                }
+                override fun onCancelled(error: DatabaseError) { /* no-op */ }
+            })
+    }
+
+    // przełącza stan ulubionego dla danego productID
+    fun toggleFavoriteProduct(productId: String) {
+        val uid = auth.currentUser?.uid ?: return
+        val favRef = db.getReference("users/$uid/favorites/products/$productId")
+        favRef.get().addOnSuccessListener { snap ->
+            if (snap.exists()) favRef.removeValue() else favRef.setValue(true)
+        }
     }
 }

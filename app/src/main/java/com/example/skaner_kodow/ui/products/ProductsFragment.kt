@@ -36,8 +36,20 @@ class ProductsFragment : Fragment() {
             findNavController().navigate(R.id.action_nav_products_to_addProductFragment)
         }
 
+        // nasluchuje ulubione
+        viewModel.observeFavoriteProducts()
+
         viewModel.filteredProducts.observe(viewLifecycleOwner) { list ->
+            // przekazanie aktualny zestaw ulubionych
+            adapter.submitFavorites(viewModel.favProducts.value.orEmpty())
             adapter.submitList(list)
+        }
+
+        // gdy zmieniają się ulubione odmalowuje ikonki serduszek
+        viewModel.favProducts.observe(viewLifecycleOwner) { favs ->
+            if (::adapter.isInitialized) {
+                adapter.submitFavorites(favs)
+            }
         }
 
         viewModel.fetchProducts()
@@ -79,6 +91,12 @@ class ProductsFragment : Fragment() {
                 showAdminMenu(product)
             }
         )
+
+        // --- ULUBIONE: kliknięcie w serduszko → przełącz w /users/{uid}/favorites/products
+        adapter.setOnFavoriteClickListener { productId ->
+            viewModel.toggleFavoriteProduct(productId)
+        }
+
         binding.recyclerViewProducts.layoutManager = LinearLayoutManager(requireContext())
         binding.recyclerViewProducts.adapter = adapter
 

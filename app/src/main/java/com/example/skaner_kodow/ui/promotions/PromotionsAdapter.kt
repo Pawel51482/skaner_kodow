@@ -16,20 +16,42 @@ class PromotionsAdapter(
     private val onLongClick: (Promotion) -> Unit
 ) : ListAdapter<Promotion, PromotionsAdapter.PromotionViewHolder>(DiffCallback()) {
 
+    // Ulubione
+    private var favoriteIds: Set<String> = emptySet()
+    private var onFavoriteClick: (String) -> Unit = {}
+
+    // Zaktualizuj listę ID ulubionych promocji
+    fun submitFavorites(favs: Set<String>) {
+        favoriteIds = favs
+        notifyDataSetChanged()
+    }
+
+    // listener kliknięcia w serduszko
+    fun setOnFavoriteClickListener(listener: (String) -> Unit) {
+        onFavoriteClick = listener
+    }
+
+
     class PromotionViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         private val image: ImageView = itemView.findViewById(R.id.ivPromotionImage)
         private val title: TextView = itemView.findViewById(R.id.tvTitle)
         private val desc: TextView = itemView.findViewById(R.id.tvDescription)
         private val barcode: TextView = itemView.findViewById(R.id.tvBarcode)
         private val dates: TextView = itemView.findViewById(R.id.tvDates)
+        private val favIcon: ImageView? = itemView.findViewById(R.id.ivFavorite)
 
-        fun bind(promotion: Promotion) {
+        fun bind(
+            promotion: Promotion,
+            favIds: Set<String>,
+            onFavClick: (String) -> Unit
+        ) {
             title.text = promotion.title
             // opis skrócony na liście
             desc.text = promotion.description
             barcode.text = "Kod: ${promotion.barcode}"
             dates.text = "${promotion.startDate} – ${promotion.endDate}"
 
+            // Obrazek
             if (!promotion.imageUrl.isNullOrEmpty()) {
                 image.visibility = View.VISIBLE
                 Glide.with(itemView.context)
@@ -37,6 +59,16 @@ class PromotionsAdapter(
                     .into(image)
             } else {
                 image.visibility = View.GONE
+            }
+
+            // Serduszko ulubionych
+            favIcon?.let {
+                val isFav = favIds.contains(promotion.id)
+                it.setImageResource(
+                    if (isFav) R.drawable.ic_heart_filled else R.drawable.ic_heart_outline
+                )
+                it.setOnClickListener { _ -> onFavClick(promotion.id) }
+                it.visibility = View.VISIBLE
             }
         }
     }
@@ -49,7 +81,7 @@ class PromotionsAdapter(
 
     override fun onBindViewHolder(holder: PromotionViewHolder, position: Int) {
         val item = getItem(position)
-        holder.bind(item)
+        holder.bind(item, favoriteIds, onFavoriteClick)
 
         holder.itemView.setOnClickListener {
             onClick(item)

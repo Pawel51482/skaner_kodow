@@ -73,10 +73,38 @@ class PromotionsViewModel : ViewModel() {
 
     //edycja
     fun updatePromotion(promotion: Promotion) {
-        // zakładamy, że promotion.id nie jest pusty
         val id = promotion.id
         if (id.isEmpty()) return
 
         databaseRef.child(id).setValue(promotion)
     }
+
+
+    // Ulubione
+    private val favAuth = com.google.firebase.auth.FirebaseAuth.getInstance()
+    private val favDb = com.google.firebase.database.FirebaseDatabase.getInstance()
+
+    private val _favPromotions = androidx.lifecycle.MutableLiveData<Set<String>>()
+    val favPromotions: androidx.lifecycle.LiveData<Set<String>> get() = _favPromotions
+
+    fun observeFavoritePromotions() {
+        val uid = favAuth.currentUser?.uid ?: return
+        favDb.getReference("users/$uid/favorites/promotions")
+            .addValueEventListener(object: com.google.firebase.database.ValueEventListener {
+                override fun onDataChange(s: com.google.firebase.database.DataSnapshot) {
+                    _favPromotions.postValue(s.children.mapNotNull { it.key }.toSet())
+                }
+                override fun onCancelled(error: com.google.firebase.database.DatabaseError) {}
+            })
+    }
+
+    fun toggleFavoritePromotion(promoId: String) {
+        val uid = favAuth.currentUser?.uid ?: return
+        val ref = favDb.getReference("users/$uid/favorites/promotions/$promoId")
+        ref.get().addOnSuccessListener { snap ->
+            if (snap.exists()) ref.removeValue() else ref.setValue(true)
+        }
+    }
+
+
 }

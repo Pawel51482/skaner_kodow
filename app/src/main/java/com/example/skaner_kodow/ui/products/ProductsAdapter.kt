@@ -3,8 +3,10 @@ package com.example.skaner_kodow.ui.products
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
+import com.example.skaner_kodow.R
 import com.example.skaner_kodow.databinding.ItemProductBinding
 import java.util.Locale
 
@@ -16,12 +18,29 @@ class ProductsAdapter(
 
     private var products: List<Product> = emptyList()
 
+    // ulubione
+    private var favoriteIds: Set<String> = emptySet()
+    private var onFavoriteClick: (String) -> Unit = {}
+
+
+    fun submitFavorites(favs: Set<String>) {
+        favoriteIds = favs
+        notifyDataSetChanged()
+    }
+
+
+    fun setOnFavoriteClickListener(listener: (String) -> Unit) {
+        onFavoriteClick = listener
+    }
+
+
     inner class ProductViewHolder(val binding: ItemProductBinding) :
         RecyclerView.ViewHolder(binding.root) {
 
         fun bind(product: Product) {
             binding.textViewName.text = product.name
 
+            // cena (jeśli istnieje)
             if (product.price > 0.0) {
                 binding.textViewPrice.visibility = View.VISIBLE
                 val priceFormatted =
@@ -31,13 +50,13 @@ class ProductsAdapter(
                 binding.textViewPrice.visibility = View.GONE
             }
 
+            // obrazek
             Glide.with(binding.imageViewProduct.context)
                 .load(product.imageUrl)
                 .into(binding.imageViewProduct)
 
-            binding.root.setOnClickListener {
-                onProductClick(product)
-            }
+            // obsługa kliknięć
+            binding.root.setOnClickListener { onProductClick(product) }
 
             if (isAdmin) {
                 binding.root.setOnLongClickListener {
@@ -45,8 +64,20 @@ class ProductsAdapter(
                     true
                 }
             } else {
-                // zwykły user – brak menu
                 binding.root.setOnLongClickListener(null)
+            }
+
+            // serduszko ulubionych
+            val ivFavorite: ImageView? = binding.root.findViewById(R.id.ivFavorite)
+            if (ivFavorite != null) {
+                val isFav = favoriteIds.contains(product.id)
+                ivFavorite.setImageResource(
+                    if (isFav) R.drawable.ic_heart_filled else R.drawable.ic_heart_outline
+                )
+                ivFavorite.setOnClickListener {
+                    onFavoriteClick(product.id)
+                }
+                ivFavorite.visibility = View.VISIBLE
             }
         }
     }

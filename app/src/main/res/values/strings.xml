@@ -10,4 +10,6 @@
     <string name="menu_home">Strona główna</string>
     <string name="menu_gallery">Gallery</string>
     <string name="menu_slideshow">Slideshow</string>
+
+    <string name="favorite_icon">Ikona ulubionych</string>
 </resources>
