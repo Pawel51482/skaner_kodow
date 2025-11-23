@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:padding="16dp">
@@ -8,7 +9,6 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical">
-
         <ImageView
             android:id="@+id/ivImage"
             android:layout_width="match_parent"
@@ -17,12 +17,32 @@
             android:visibility="gone"
             android:layout_marginBottom="12dp" />
 
-        <TextView
-            android:id="@+id/tvTitle"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textStyle="bold"
-            android:textSize="20sp" />
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:id="@+id/tvTitle"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textStyle="bold"
+                android:textSize="20sp"
+                android:text="Tytuł promocji" />
+
+            <ImageView
+                android:id="@+id/ivFavoriteDetails"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:layout_marginStart="8dp"
+                android:clickable="true"
+                android:contentDescription="@string/favorite_icon"
+                android:focusable="true"
+                android:src="@drawable/ic_heart_outline"
+                tools:ignore="TouchTargetSizeCheck" />
+        </LinearLayout>
 
         <TextView
             android:id="@+id/tvDates"
@@ -30,7 +50,8 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
             android:textSize="14sp"
-            android:textColor="#666" />
+            android:textColor="#666"
+            android:text="" />
 
         <TextView
             android:id="@+id/tvBarcode"
@@ -38,14 +59,57 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
             android:textSize="14sp"
-            android:textColor="#666" />
+            android:textColor="#666"
+            android:text="Kod produktu" />
 
         <TextView
             android:id="@+id/tvDescription"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
-            android:textSize="15sp" />
+            android:textSize="15sp"
+            android:text="Pełny opis promocji" />
+
+        <!-- Oceny -->
+        <LinearLayout
+            android:id="@+id/layoutVotesDetails"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="16dp"
+            android:gravity="center_vertical">
+
+            <ImageView
+                android:id="@+id/ivVotePlus"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@drawable/vote_up"
+                android:alpha="0.5" />
+
+            <TextView
+                android:id="@+id/tvPlusCount"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="4dp"
+                android:text="0"
+                android:textSize="14sp" />
+
+            <ImageView
+                android:id="@+id/ivVoteMinus"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_marginStart="16dp"
+                android:src="@drawable/vote_down"
+                android:alpha="0.5" />
+
+            <TextView
+                android:id="@+id/tvMinusCount"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="4dp"
+                android:text="0"
+                android:textSize="14sp" />
+        </LinearLayout>
 
     </LinearLayout>
 </ScrollView>

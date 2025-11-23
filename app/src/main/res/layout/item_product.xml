@@ -54,8 +54,7 @@
             android:layout_alignParentEnd="true"
             android:layout_margin="8dp"
             android:src="@drawable/ic_heart_outline"
-            android:contentDescription="@string/favorite_icon"
-            app:tint="@color/black" />
+            android:contentDescription="@string/favorite_icon" />
 
     </LinearLayout>
 </androidx.cardview.widget.CardView>

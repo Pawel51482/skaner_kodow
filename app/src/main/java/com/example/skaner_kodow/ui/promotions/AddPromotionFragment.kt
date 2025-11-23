@@ -225,6 +225,8 @@ class AddPromotionFragment : Fragment() {
 
     // ========== DATE PICKER ==========
     private fun showDatePicker(onDatePicked: (String) -> Unit) {
+        val locale = java.util.Locale("pl", "PL")
+        java.util.Locale.setDefault(locale)
         val c = Calendar.getInstance()
         val y = c.get(Calendar.YEAR)
         val m = c.get(Calendar.MONTH)
@@ -235,7 +237,7 @@ class AddPromotionFragment : Fragment() {
             { _, year, month, day ->
                 val mm = (month + 1).toString().padStart(2, '0')
                 val dd = day.toString().padStart(2, '0')
-                onDatePicked("$year-$mm-$dd")
+                onDatePicked("$dd-$mm-$year")
             },
             y, m, d
         ).show()
