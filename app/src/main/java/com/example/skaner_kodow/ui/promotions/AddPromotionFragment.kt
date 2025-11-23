@@ -137,8 +137,6 @@ class AddPromotionFragment : Fragment() {
                     if (childBarcode == barcode) {
                         urlFound =
                             child.child("imageUrl").getValue(String::class.java)
-                                ?: child.child("imageURL").getValue(String::class.java)
-                                        ?: child.child("photoUrl").getValue(String::class.java)
                         break
                     }
                 }
@@ -154,13 +152,16 @@ class AddPromotionFragment : Fragment() {
 
     // ========== PODGLĄD ==========
     private fun showImagePreview(url: String) {
+
+        if (!isAdded || view == null) return
+
         val iv = binding.ivImagePreview
-        if (iv != null) {
-            iv.visibility = View.VISIBLE
-            Glide.with(this)
-                .load(url)
-                .into(iv)
-        }
+        iv.visibility = View.VISIBLE
+
+        Glide.with(requireContext().applicationContext)
+            .load(url)
+            .into(iv)
+
         selectedImageUrl = url
     }
 

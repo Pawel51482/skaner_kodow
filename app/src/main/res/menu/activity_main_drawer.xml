@@ -34,6 +34,11 @@
             android:icon="@drawable/ic_heart_filled"/>
 
         <item
+            android:id="@+id/nav_shopping_lists"
+            android:icon="@drawable/ic_list"
+            android:title="@string/menu_shopping_lists" />
+
+        <item
             android:id="@+id/nav_account"
             android:title="Moje konto"
             android:icon="@drawable/ic_person" />

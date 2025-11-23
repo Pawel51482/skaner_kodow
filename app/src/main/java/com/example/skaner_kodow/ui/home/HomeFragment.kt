@@ -75,6 +75,7 @@ class HomeFragment : Fragment() {
                                 visibility = View.VISIBLE
                                 setOnClickListener {
                                     val bundle = Bundle().apply {
+                                        putString("id", id.toString())
                                         putString("name", product.name)
                                         putString("barcode", product.barcode)
                                         putString("description", product.description)

@@ -12,4 +12,8 @@
     <string name="menu_slideshow">Slideshow</string>
 
     <string name="favorite_icon">Ikona ulubionych</string>
+
+    <string name="menu_shopping_lists">Listy zakupowe</string>
+    <string name="add_shopping_list">Dodaj listę zakupową</string>
+
 </resources>

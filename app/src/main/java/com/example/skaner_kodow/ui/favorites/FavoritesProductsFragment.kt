@@ -31,6 +31,7 @@ class FavoritesProductsFragment : Fragment() {
             isAdmin = false,
             onProductClick = { product ->
                 val args = bundleOf(
+                    "id" to product.id,
                     "name" to product.name,
                     "barcode" to product.barcode,
                     "description" to product.description,

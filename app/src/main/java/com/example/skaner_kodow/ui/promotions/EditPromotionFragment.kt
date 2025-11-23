@@ -1,16 +1,23 @@
 package com.example.skaner_kodow.ui.promotions
 
 import android.app.DatePickerDialog
+import android.content.ContentResolver
+import android.net.Uri
 import android.os.Bundle
+import android.provider.OpenableColumns
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.findNavController
 import com.bumptech.glide.Glide
 import com.example.skaner_kodow.databinding.FragmentAddPromotionBinding
+import com.example.skaner_kodow.utils.ImgurUploader
+import java.io.File
+import java.io.FileOutputStream
 import java.util.Calendar
 
 class EditPromotionFragment : Fragment() {
@@ -22,6 +29,18 @@ class EditPromotionFragment : Fragment() {
     private var promoId: String? = null
     private var addedBy: String? = null
     private var currentImageUrl: String? = null
+
+    // wybrane zdjęcie jeśli użytkownik zmieni
+    private var selectedImageUrl: String? = null
+
+    // picker z galerii
+    private val pickImageLauncher =
+        registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+            if (uri != null) {
+                uploadImageToImgur(uri)
+            }
+        }
+
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -41,6 +60,9 @@ class EditPromotionFragment : Fragment() {
         val endDate = args?.getString("endDate") ?: ""
         addedBy = args?.getString("addedBy")
         currentImageUrl = args?.getString("imageUrl")
+
+        // na start zakładamy, że wybrane = obecne
+        selectedImageUrl = currentImageUrl
 
         // ustawiamy dane w polach
         binding.etTitle.setText(title)
@@ -68,12 +90,16 @@ class EditPromotionFragment : Fragment() {
         }
 
         // przycisk – teraz to "zapisz zmiany", ale korzystamy z tego samego id
+        binding.btnPickImage?.setOnClickListener {
+            pickImageLauncher.launch("image/*")
+        }
+
+        binding.progressImageUpload?.visibility = View.GONE
+
         binding.btnAddPromotion.text = "Zapisz zmiany"
         binding.btnAddPromotion.setOnClickListener {
             saveEditedPromotion()
         }
-
-        // (możesz dodać też skaner / wybór zdjęcia tak jak w add – ale na razie zostawiamy prosto)
 
         return binding.root
     }
@@ -98,6 +124,9 @@ class EditPromotionFragment : Fragment() {
             return
         }
 
+        // jeśli użytkownik wybrał nowe zdjęcie użyj go, w przeciwnym razie zostaw stare (currentImageUrl)
+        val finalImageUrl = (selectedImageUrl ?: currentImageUrl).orEmpty()
+
         // składamy obiekt taki jak w Promotion.kt
         val edited = Promotion(
             id = id,
@@ -107,7 +136,7 @@ class EditPromotionFragment : Fragment() {
             startDate = start,
             endDate = end,
             addedBy = addedBy ?: "",
-            imageUrl = currentImageUrl ?: ""
+            imageUrl = finalImageUrl
         )
 
         viewModel.updatePromotion(edited)
@@ -130,5 +159,75 @@ class EditPromotionFragment : Fragment() {
             },
             y, m, d
         ).show()
+    }
+
+    // ========== PODGLĄD ZDJĘCIA ==========
+
+    private fun showImagePreview(url: String) {
+        val iv = binding.ivImagePreview
+        iv.visibility = View.VISIBLE
+        Glide.with(this)
+            .load(url)
+            .into(iv)
+        selectedImageUrl = url
+    }
+
+    // ========== GALERIA + IMGUR ==========
+
+    private fun uploadImageToImgur(uri: Uri) {
+        val ctx = requireContext()
+        val pb = binding.progressImageUpload
+        pb?.visibility = View.VISIBLE
+
+        val file = createTempFileFromUri(uri)
+        if (file == null) {
+            pb?.visibility = View.GONE
+            Toast.makeText(ctx, "Nie udało się odczytać pliku", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        ImgurUploader.uploadImage(
+            file,
+            onSuccess = { url ->
+                // wracamy na główny wątek
+                requireActivity().runOnUiThread {
+                    pb?.visibility = View.GONE
+                    showImagePreview(url)
+                    Toast.makeText(ctx, "Zdjęcie przesłane", Toast.LENGTH_SHORT).show()
+                }
+            },
+            onError = {
+                requireActivity().runOnUiThread {
+                    pb?.visibility = View.GONE
+                    Toast.makeText(ctx, "Błąd uploadu zdjęcia", Toast.LENGTH_SHORT).show()
+                }
+            }
+        )
+    }
+
+    private fun createTempFileFromUri(uri: Uri): File? {
+        return try {
+            val resolver: ContentResolver = requireContext().contentResolver
+            val name = queryName(resolver, uri) ?: "image.jpg"
+            val file = File(requireContext().cacheDir, name)
+            resolver.openInputStream(uri)?.use { input ->
+                FileOutputStream(file).use { output ->
+                    input.copyTo(output)
+                }
+            }
+            file
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
+
+    private fun queryName(resolver: ContentResolver, uri: Uri): String? {
+        val returnCursor = resolver.query(uri, null, null, null, null) ?: return null
+        returnCursor.use {
+            val nameIndex = it.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+            it.moveToFirst()
+            return it.getString(nameIndex)
+        }
     }
 }

@@ -162,6 +162,7 @@ class ProductsFragment : Fragment() {
 
     private fun navigateToProductDetails(product: Product) {
         val bundle = Bundle().apply {
+            putString("id", product.id)
             putString("name", product.name)
             putString("barcode", product.barcode)
             putString("description", product.description)

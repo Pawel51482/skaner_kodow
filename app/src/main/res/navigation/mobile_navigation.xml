@@ -108,4 +108,26 @@
         android:label="Ulubione"
         tools:layout="@layout/fragment_favorites"/>
 
+    <!-- Lista zakupowa -->
+    <fragment
+        android:id="@+id/nav_shopping_lists"
+        android:name="com.example.skaner_kodow.ui.shoppinglists.ShoppingListsFragment"
+        android:label="@string/menu_shopping_lists"
+        tools:layout="@layout/fragment_shopping_lists" />
+    <fragment
+        android:id="@+id/shoppingListDetailsFragment"
+        android:name="com.example.skaner_kodow.ui.shoppinglists.ShoppingListDetailsFragment"
+        android:label="Szczegóły listy"
+        tools:layout="@layout/fragment_shopping_list_details">
+        <argument
+            android:name="listId"
+            app:argType="string" />
+    </fragment>
+    <fragment
+        android:id="@+id/selectProductFragment"
+        android:name="com.example.skaner_kodow.ui.shoppinglists.SelectProductFragment"
+        android:label="Wybierz produkt" />
+
+
+
 </navigation>

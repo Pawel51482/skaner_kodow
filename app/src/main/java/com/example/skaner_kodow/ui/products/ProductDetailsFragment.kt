@@ -7,15 +7,20 @@ import android.view.ViewGroup
 import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
+import androidx.appcompat.app.AlertDialog
+import androidx.lifecycle.ViewModelProvider
 import com.bumptech.glide.Glide
 import com.example.skaner_kodow.R
 import com.example.skaner_kodow.databinding.FragmentProductDetailsBinding
+import com.example.skaner_kodow.ui.shoppinglists.ShoppingListsViewModel
 import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.auth.FirebaseAuth
 import java.util.Locale
 
 class ProductDetailsFragment : Fragment() {
 
     private lateinit var binding: FragmentProductDetailsBinding
+    private lateinit var shoppingListsViewModel: ShoppingListsViewModel
 
     private var foundPromotion: com.example.skaner_kodow.ui.promotions.Promotion? = null
     private var productBarcode: String = ""
@@ -33,6 +38,13 @@ class ProductDetailsFragment : Fragment() {
         val productImageUrl = arguments?.getString("imageUrl") ?: ""
         val productPrice = arguments?.getDouble("price") ?: 0.0
         val productPriceDate = arguments?.getString("priceUpdatedAt") ?: ""
+
+        val productId = arguments?.getString("id")
+
+        // inicjalizacja ViewModel od list zakupowych + nasłuchiwanie list
+        shoppingListsViewModel = ViewModelProvider(requireActivity())
+            .get(ShoppingListsViewModel::class.java)
+        shoppingListsViewModel.observeShoppingLists()
 
         binding.textViewProductName.text = productName
         binding.textViewProductBarcode.text = productBarcode
@@ -78,9 +90,84 @@ class ProductDetailsFragment : Fragment() {
             }
         }
 
+        // Obsługa przycisku "dodaj do listy zakupowej"
+        binding.btnAddToShoppingList.setOnClickListener {
+            if (productId.isNullOrEmpty()) {
+                Toast.makeText(requireContext(), "Brak ID produktu", Toast.LENGTH_SHORT).show()
+            } else {
+                showAddToShoppingListDialog(productId)
+            }
+        }
+
         return binding.root
     }
 
+    // wybor listy zakupowej
+    private fun showAddToShoppingListDialog(productId: String) {
+        val uid = FirebaseAuth.getInstance().currentUser?.uid
+        if (uid == null) {
+            Toast.makeText(requireContext(), "Musisz być zalogowany", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val lists = shoppingListsViewModel.lists.value ?: emptyList()
+        if (lists.isEmpty()) {
+            Toast.makeText(
+                requireContext(),
+                "Nie masz żadnych list zakupowych. Utwórz listę w zakładce 'Listy zakupowe'.",
+                Toast.LENGTH_LONG
+            ).show()
+            return
+        }
+
+        val names = lists.map { it.name }.toTypedArray()
+
+        AlertDialog.Builder(requireContext())
+            .setTitle("Dodaj do listy zakupowej")
+            .setItems(names) { _, which ->
+                val listId = lists[which].id
+                addProductToShoppingList(listId, productId)
+            }
+            .setNegativeButton("Anuluj", null)
+            .show()
+    }
+
+    // zapis produktu do  listy zakupowej
+    private fun addProductToShoppingList(listId: String, productId: String) {
+        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
+        val itemsRef = FirebaseDatabase.getInstance()
+            .getReference("users")
+            .child(uid)
+            .child("shoppingLists")
+            .child(listId)
+            .child("items")
+
+        val newRef = itemsRef.push()
+        val itemId = newRef.key ?: return
+
+        val data = mapOf(
+            "id" to itemId,
+            "productId" to productId,
+            "quantity" to 1,
+            "checked" to false
+        )
+
+        newRef.setValue(data)
+            .addOnSuccessListener {
+                Toast.makeText(
+                    requireContext(),
+                    "Dodano produkt do listy zakupowej",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+            .addOnFailureListener {
+                Toast.makeText(
+                    requireContext(),
+                    "Błąd przy dodawaniu do listy",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+    }
 
     private fun checkPromotionForBarcode(barcode: String) {
         if (barcode.isEmpty()) return
