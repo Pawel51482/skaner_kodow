@@ -5,18 +5,18 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
-import androidx.fragment.app.Fragment
-import androidx.navigation.fragment.findNavController
 import androidx.appcompat.app.AlertDialog
+import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
+import androidx.navigation.fragment.findNavController
 import com.bumptech.glide.Glide
 import com.example.skaner_kodow.R
 import com.example.skaner_kodow.databinding.FragmentProductDetailsBinding
 import com.example.skaner_kodow.ui.shoppinglists.ShoppingListsViewModel
-import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
 import java.util.Locale
 
@@ -68,7 +68,14 @@ class ProductDetailsFragment : Fragment() {
         }
 
         if (productImageUrl.isNotEmpty()) {
-            Glide.with(this).load(productImageUrl).into(binding.imageViewProduct)
+            Glide.with(this)
+                .load(productImageUrl)
+                .into(binding.imageViewProduct)
+
+            binding.imageViewProduct.setOnClickListener {
+                com.example.skaner_kodow.utils.ImagePreview(productImageUrl)
+                    .show(parentFragmentManager, "product_image_preview")
+            }
         }
 
         binding.promoInfoGroup.visibility = View.GONE

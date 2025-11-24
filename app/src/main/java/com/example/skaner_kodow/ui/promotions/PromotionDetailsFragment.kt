@@ -9,14 +9,15 @@ import androidx.fragment.app.Fragment
 import com.bumptech.glide.Glide
 import com.example.skaner_kodow.R
 import com.example.skaner_kodow.databinding.FragmentPromotionDetailsBinding
-import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
-import com.google.firebase.auth.FirebaseAuth
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+
 
 class PromotionDetailsFragment : Fragment() {
 
@@ -45,7 +46,15 @@ class PromotionDetailsFragment : Fragment() {
 
         if (imageUrl.isNotEmpty()) {
             binding.ivImage.visibility = View.VISIBLE
-            Glide.with(this).load(imageUrl).into(binding.ivImage)
+            Glide.with(this)
+                .load(imageUrl)
+                .into(binding.ivImage)
+
+            // 👉 kliknięcie w miniaturkę otwiera fullscreen z zoomem
+            binding.ivImage.setOnClickListener {
+                com.example.skaner_kodow.utils.ImagePreview(imageUrl)
+                    .show(parentFragmentManager, "promo_image_preview")
+            }
         } else {
             binding.ivImage.visibility = View.GONE
         }

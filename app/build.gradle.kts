@@ -76,6 +76,5 @@ dependencies {
     implementation("com.google.firebase:firebase-analytics")
     implementation("com.github.bumptech.glide:glide:4.15.1")
     implementation("com.squareup.okhttp3:okhttp:4.10.0")
-
-
+    implementation("io.getstream:photoview:1.0.3")
 }

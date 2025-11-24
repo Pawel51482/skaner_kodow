@@ -83,6 +83,8 @@ class AddProductFragment : Fragment() {
 
         if (requestCode == PICK_IMAGE_REQUEST && resultCode == Activity.RESULT_OK && data != null) {
             val imageUri = data.data
+            val pb = binding.progressImageUpload
+            pb.visibility = View.VISIBLE
             if (imageUri != null) {
                 val imageFile = getFileFromUri(imageUri)
                 if (imageFile != null) {
@@ -90,6 +92,8 @@ class AddProductFragment : Fragment() {
                         imageFile,
                         onSuccess = { imageUrl ->
                             activity?.runOnUiThread {
+                                binding.imageView.visibility = View.VISIBLE
+                                pb.visibility = View.GONE
                                 Glide.with(this)
                                     .load(imageUrl)
                                     .into(binding.imageView)
