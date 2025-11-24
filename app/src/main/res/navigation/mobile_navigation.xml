@@ -10,22 +10,32 @@
         android:name="com.example.skaner_kodow.ui.home.HomeFragment"
         android:label="@string/menu_home"
         tools:layout="@layout/fragment_home">
+
+        <!-- Do list zakupów -->
         <action
-            android:id="@+id/action_homeFragment_to_productDetailsFragment"
+            android:id="@+id/action_nav_home_to_nav_shopping_lists"
+            app:destination="@id/nav_shopping_lists" />
+
+        <!-- Do wszystkich promocji -->
+        <action
+            android:id="@+id/action_nav_home_to_nav_promotions"
+            app:destination="@id/nav_promotions" />
+
+        <!-- Szczegóły produktu -->
+        <action
+            android:id="@+id/action_nav_home_to_productDetailsFragment"
             app:destination="@id/productDetailsFragment" />
+
+        <!-- Szczegóły promocji -->
+        <action
+            android:id="@+id/action_nav_home_to_promotionDetailsFragment"
+            app:destination="@id/promotionDetailsFragment" />
+
+        <!-- Szczegóły listy zakupów -->
+        <action
+            android:id="@+id/action_nav_home_to_shoppingListDetailsFragment"
+            app:destination="@id/shoppingListDetailsFragment" />
     </fragment>
-
-    <fragment
-        android:id="@+id/nav_gallery"
-        android:name="com.example.skaner_kodow.ui.gallery.GalleryFragment"
-        android:label="@string/menu_gallery"
-        tools:layout="@layout/fragment_gallery" />
-
-    <fragment
-        android:id="@+id/nav_slideshow"
-        android:name="com.example.skaner_kodow.ui.slideshow.SlideshowFragment"
-        android:label="@string/menu_slideshow"
-        tools:layout="@layout/fragment_slideshow" />
 
     <!-- Fragment Products -->
     <fragment
