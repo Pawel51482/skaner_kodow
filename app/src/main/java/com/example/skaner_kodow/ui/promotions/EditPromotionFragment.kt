@@ -5,6 +5,7 @@ import android.content.ContentResolver
 import android.net.Uri
 import android.os.Bundle
 import android.provider.OpenableColumns
+import android.text.InputFilter
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -15,12 +16,12 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.findNavController
 import com.bumptech.glide.Glide
 import com.example.skaner_kodow.databinding.FragmentAddPromotionBinding
+import com.example.skaner_kodow.utils.ImagePreview
 import com.example.skaner_kodow.utils.ImgurUploader
 import java.io.File
 import java.io.FileOutputStream
-import java.util.Calendar
-import android.text.InputFilter
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
@@ -79,10 +80,7 @@ class EditPromotionFragment : Fragment() {
 
         // jeśli było zdjęcie – pokaż
         if (!currentImageUrl.isNullOrEmpty()) {
-            binding.ivImagePreview.visibility = View.VISIBLE
-            Glide.with(this)
-                .load(currentImageUrl)
-                .into(binding.ivImagePreview)
+            showImagePreview(currentImageUrl!!)
         } else {
             binding.ivImagePreview.visibility = View.GONE
         }
@@ -212,6 +210,12 @@ class EditPromotionFragment : Fragment() {
             .load(url)
             .into(iv)
         selectedImageUrl = url
+        iv.setOnClickListener {
+            val finalUrl = selectedImageUrl ?: currentImageUrl
+            if (!finalUrl.isNullOrEmpty()) {
+                ImagePreview(finalUrl).show(parentFragmentManager, "edit_promotion_preview")
+            }
+        }
     }
 
     // ========== GALERIA + IMGUR ==========

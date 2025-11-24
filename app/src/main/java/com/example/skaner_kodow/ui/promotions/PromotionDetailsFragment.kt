@@ -49,7 +49,6 @@ class PromotionDetailsFragment : Fragment() {
             Glide.with(this)
                 .load(imageUrl)
                 .into(binding.ivImage)
-            
             binding.ivImage.setOnClickListener {
                 com.example.skaner_kodow.utils.ImagePreview(imageUrl)
                     .show(parentFragmentManager, "promo_image_preview")
