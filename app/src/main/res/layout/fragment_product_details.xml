@@ -13,18 +13,34 @@
         android:adjustViewBounds="true"
         android:layout_marginBottom="16dp" />
 
-    <TextView
-        android:id="@+id/textViewProductName"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:textSize="20sp"
-        android:textStyle="bold"
-        android:layout_marginBottom="16dp" />
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="8dp">
+
+        <TextView
+            android:id="@+id/textViewProductName"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textSize="20sp"
+            android:text="Tytuł"
+            android:textStyle="bold" />
+
+        <ImageView
+            android:id="@+id/ivFavoriteProduct"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:src="@drawable/ic_heart_outline" />
+    </LinearLayout>
 
     <TextView
         android:id="@+id/textViewProductBarcode"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:text="kod"
         android:layout_marginBottom="16dp" />
 
     <TextView
@@ -33,6 +49,7 @@
         android:layout_height="wrap_content"
         android:textSize="16sp"
         android:textStyle="bold"
+        android:text="Cena"
         android:layout_marginTop="8dp"/>
 
     <Button
@@ -71,5 +88,6 @@
         android:id="@+id/textViewProductDescription"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:text="Opis"
         android:layout_marginBottom="16dp" />
 </LinearLayout>

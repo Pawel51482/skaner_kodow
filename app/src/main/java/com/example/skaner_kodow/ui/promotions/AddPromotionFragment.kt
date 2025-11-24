@@ -13,6 +13,7 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.setFragmentResultListener
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.findNavController
 import com.bumptech.glide.Glide
@@ -23,6 +24,10 @@ import com.google.firebase.database.FirebaseDatabase
 import java.io.File
 import java.io.FileOutputStream
 import java.util.Calendar
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import android.text.InputFilter
 
 class AddPromotionFragment : Fragment() {
 
@@ -61,6 +66,30 @@ class AddPromotionFragment : Fragment() {
         binding = FragmentAddPromotionBinding.inflate(inflater, container, false)
         viewModel = ViewModelProvider(this).get(PromotionsViewModel::class.java)
 
+        // limit tytułu
+        binding.etTitle.filters = arrayOf(InputFilter.LengthFilter(50))
+
+        // obsługa wyniku z SelectProductFragment
+        parentFragmentManager.setFragmentResultListener(
+            "selectProductForPromotion",
+            viewLifecycleOwner
+        ) { _, bundle ->
+            val name = bundle.getString("productName") ?: ""
+            val barcode = bundle.getString("productBarcode") ?: ""
+            val imageUrl = bundle.getString("productImageUrl")
+
+            if (name.isNotEmpty()) {
+                binding.etTitle.setText(name)
+            }
+            if (barcode.isNotEmpty()) {
+                binding.etProductBarcode.setText(barcode)
+            }
+            if (!imageUrl.isNullOrEmpty()) {
+                selectedImageUrl = imageUrl
+                showImagePreview(imageUrl)
+            }
+        }
+
         // daty
         binding.etStartDate.setOnClickListener {
             showDatePicker { d -> binding.etStartDate.setText(d) }
@@ -91,6 +120,17 @@ class AddPromotionFragment : Fragment() {
             pickImageLauncher.launch("image/*")
         }
 
+        // przycisk "wybierz z produktów"
+        binding.btnSelectFromProducts.setOnClickListener {
+            val args = Bundle().apply {
+                putString("mode", "promotion")
+            }
+            findNavController().navigate(
+                com.example.skaner_kodow.R.id.selectProductFragment,
+                args
+            )
+        }
+
         // schowaj podgląd i progress jeśli są
         binding.ivImagePreview?.visibility = View.GONE
         binding.progressImageUpload?.visibility = View.GONE
@@ -112,16 +152,55 @@ class AddPromotionFragment : Fragment() {
             return
         }
 
+        // limit znakow w tytule
+        if (title.length > 50) {
+            Toast.makeText(
+                requireContext(),
+                "Tytuł może mieć maksymalnie 50 znaków",
+                Toast.LENGTH_SHORT
+            ).show()
+            return
+        }
+
+        val sdf = SimpleDateFormat("dd-MM-yyyy", Locale.getDefault())
+        val today = sdf.parse(sdf.format(Date()))
+        val startDate = try { sdf.parse(start) } catch (e: Exception) { null }
+        val endDate = try { sdf.parse(end) } catch (e: Exception) { null }
+
+        if (startDate == null || endDate == null || today == null) {
+            Toast.makeText(requireContext(), "Nieprawidłowy format daty", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        if (endDate.before(today)) {
+            Toast.makeText(
+                requireContext(),
+                "Data zakończenia nie może być wcześniejsza niż dzisiaj",
+                Toast.LENGTH_SHORT
+            ).show()
+            return
+        }
+
+        if (endDate.before(startDate)) {
+            Toast.makeText(
+                requireContext(),
+                "Data zakończenia nie może być wcześniejsza niż data rozpoczęcia",
+                Toast.LENGTH_SHORT
+            ).show()
+            return
+        }
+
         // zapisujemy to co mamy w selectedImageUrl (albo pusty string)
         viewModel.addPromotion(
-            title,
-            description,
-            barcode,
-            start,
-            end,
-            selectedImageUrl ?: ""
+            title = title,
+            description = description,
+            barcode = barcode,
+            startDate = start,
+            endDate = end,
+            imageUrl = selectedImageUrl ?: ""
         )
-        Toast.makeText(requireContext(), "Promocja dodana!", Toast.LENGTH_SHORT).show()
+
+        Toast.makeText(requireContext(), "Promocja dodana", Toast.LENGTH_SHORT).show()
         findNavController().popBackStack()
     }
 
@@ -132,20 +211,25 @@ class AddPromotionFragment : Fragment() {
         productsRef.get()
             .addOnSuccessListener { snap ->
                 var urlFound: String? = null
+                var nameFound: String? = null
                 for (child in snap.children) {
                     val childBarcode = child.child("barcode").getValue(String::class.java)
                     if (childBarcode == barcode) {
-                        urlFound =
-                            child.child("imageUrl").getValue(String::class.java)
+                        urlFound = child.child("imageUrl").getValue(String::class.java)
+                        nameFound = child.child("name").getValue(String::class.java)
                         break
+                    }
+                }
+
+                if (!nameFound.isNullOrEmpty()) {
+                    if (binding.etTitle.text.toString().isBlank()) {
+                        binding.etTitle.setText(nameFound)
                     }
                 }
 
                 if (urlFound != null) {
                     selectedImageUrl = urlFound
                     showImagePreview(urlFound)
-                } else {
-                    // nic nie znaleziono – nic nie robimy
                 }
             }
     }
@@ -225,8 +309,6 @@ class AddPromotionFragment : Fragment() {
 
     // ========== DATE PICKER ==========
     private fun showDatePicker(onDatePicked: (String) -> Unit) {
-        val locale = java.util.Locale("pl", "PL")
-        java.util.Locale.setDefault(locale)
         val c = Calendar.getInstance()
         val y = c.get(Calendar.YEAR)
         val m = c.get(Calendar.MONTH)

@@ -14,6 +14,9 @@ import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.ValueEventListener
 import com.google.firebase.auth.FirebaseAuth
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class PromotionDetailsFragment : Fragment() {
 
@@ -45,6 +48,39 @@ class PromotionDetailsFragment : Fragment() {
             Glide.with(this).load(imageUrl).into(binding.ivImage)
         } else {
             binding.ivImage.visibility = View.GONE
+        }
+
+        // sprawdzamy czy promocja jest zakończona
+        val sdf = SimpleDateFormat("dd-MM-yyyy", Locale.getDefault())
+        val today = sdf.parse(sdf.format(Date()))
+        val end = try {
+            sdf.parse(endDate)
+        } catch (e: Exception) {
+            null
+        }
+
+        // true jeśli endDate < dzisiaj
+        val isExpired = today != null && end != null && end.before(today)
+
+        if (isExpired) {
+            binding.tvPromoExpiredOverlay.visibility = View.VISIBLE
+
+            // wyszarzamy sekcję głosów + serduszko
+            binding.layoutVotesDetails.alpha = 0.5f
+            binding.ivVotePlus.isEnabled = false
+            binding.ivVoteMinus.isEnabled = false
+
+            binding.ivFavoriteDetails.alpha = 0.5f
+            binding.ivFavoriteDetails.isEnabled = false
+        } else {
+            binding.tvPromoExpiredOverlay.visibility = View.GONE
+
+            binding.layoutVotesDetails.alpha = 1f
+            binding.ivVotePlus.isEnabled = true
+            binding.ivVoteMinus.isEnabled = true
+
+            binding.ivFavoriteDetails.alpha = 1f
+            binding.ivFavoriteDetails.isEnabled = true
         }
 
 
@@ -89,6 +125,14 @@ class PromotionDetailsFragment : Fragment() {
 
             // ocena pozytywna
             binding.ivVotePlus.setOnClickListener {
+                binding.ivVotePlus.setOnClickListener {
+                    if (isExpired) {
+                        Toast.makeText(requireContext(), "Ta promocja jest już zakończona", Toast.LENGTH_SHORT).show()
+                        return@setOnClickListener
+                    }
+                }
+
+
                 val currentUid = auth.currentUser?.uid ?: return@setOnClickListener
 
                 // nie można głosować na swoją promocję
@@ -110,6 +154,11 @@ class PromotionDetailsFragment : Fragment() {
 
             // ocena negatywna
             binding.ivVoteMinus.setOnClickListener {
+                if (isExpired) {
+                    Toast.makeText(requireContext(), "Ta promocja jest już zakończona", Toast.LENGTH_SHORT).show()
+                    return@setOnClickListener
+                }
+
                 val currentUid = auth.currentUser?.uid ?: return@setOnClickListener
 
                 if (args?.getString("addedBy") == currentUid) {

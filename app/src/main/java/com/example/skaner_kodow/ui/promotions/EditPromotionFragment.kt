@@ -19,6 +19,10 @@ import com.example.skaner_kodow.utils.ImgurUploader
 import java.io.File
 import java.io.FileOutputStream
 import java.util.Calendar
+import android.text.InputFilter
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class EditPromotionFragment : Fragment() {
 
@@ -41,7 +45,6 @@ class EditPromotionFragment : Fragment() {
             }
         }
 
-
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -49,6 +52,9 @@ class EditPromotionFragment : Fragment() {
     ): View {
         binding = FragmentAddPromotionBinding.inflate(inflater, container, false)
         viewModel = ViewModelProvider(this).get(PromotionsViewModel::class.java)
+
+        // limit znaków tytułu
+        binding.etTitle.filters = arrayOf(InputFilter.LengthFilter(50))
 
         // odbieramy argumenty
         val args = arguments
@@ -124,10 +130,46 @@ class EditPromotionFragment : Fragment() {
             return
         }
 
-        // jeśli użytkownik wybrał nowe zdjęcie użyj go, w przeciwnym razie zostaw stare (currentImageUrl)
-        val finalImageUrl = (selectedImageUrl ?: currentImageUrl).orEmpty()
+        // limit znaków tytułu
+        if (title.length > 50) {
+            Toast.makeText(
+                requireContext(),
+                "Tytuł może mieć maksymalnie 50 znaków",
+                Toast.LENGTH_SHORT
+            ).show()
+            return
+        }
 
-        // składamy obiekt taki jak w Promotion.kt
+        val sdf = SimpleDateFormat("dd-MM-yyyy", Locale.getDefault())
+        val today = sdf.parse(sdf.format(Date()))
+        val startDate = try { sdf.parse(start) } catch (e: Exception) { null }
+        val endDate = try { sdf.parse(end) } catch (e: Exception) { null }
+
+        if (startDate == null || endDate == null || today == null) {
+            Toast.makeText(requireContext(), "Nieprawidłowy format daty", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        if (endDate.before(today)) {
+            Toast.makeText(
+                requireContext(),
+                "Data zakończenia nie może być wcześniejsza niż dzisiaj",
+                Toast.LENGTH_SHORT
+            ).show()
+            return
+        }
+
+        if (endDate.before(startDate)) {
+            Toast.makeText(
+                requireContext(),
+                "Data zakończenia nie może być wcześniejsza niż data rozpoczęcia",
+                Toast.LENGTH_SHORT
+            ).show()
+            return
+        }
+
+        val finalImageUrl = selectedImageUrl ?: currentImageUrl.orEmpty()
+
         val edited = Promotion(
             id = id,
             title = title,
@@ -155,7 +197,7 @@ class EditPromotionFragment : Fragment() {
             { _, year, month, day ->
                 val mm = (month + 1).toString().padStart(2, '0')
                 val dd = day.toString().padStart(2, '0')
-                onDatePicked("$year-$mm-$dd")
+                onDatePicked("$dd-$mm-$year")
             },
             y, m, d
         ).show()
@@ -189,7 +231,6 @@ class EditPromotionFragment : Fragment() {
         ImgurUploader.uploadImage(
             file,
             onSuccess = { url ->
-                // wracamy na główny wątek
                 requireActivity().runOnUiThread {
                     pb?.visibility = View.GONE
                     showImagePreview(url)

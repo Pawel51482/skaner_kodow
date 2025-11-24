@@ -12,10 +12,10 @@ import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.example.skaner_kodow.R
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.FirebaseDatabase
-import com.google.firebase.database.ValueEventListener
-import com.google.firebase.database.DataSnapshot
-import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.*
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class PromotionsAdapter(
     private val onClick: (Promotion) -> Unit,
@@ -63,7 +63,25 @@ class PromotionsAdapter(
             // opis skrócony na liście
             desc.text = promotion.description
             barcode.text = "Kod: ${promotion.barcode}"
-            dates.text = "${promotion.startDate} – ${promotion.endDate}"
+
+            // sprawdzenie czy promocja jest zakończona
+            val sdf = SimpleDateFormat("dd-MM-yyyy", Locale.getDefault())
+            val today = sdf.parse(sdf.format(Date()))
+            val endDate = try {
+                sdf.parse(promotion.endDate)
+            } catch (e: Exception) {
+                null
+            }
+
+            val isExpired = today != null && endDate != null && endDate.before(today)
+
+            if (isExpired) {
+                dates.text = "${promotion.startDate} – ${promotion.endDate} (zakończona)"
+                itemView.alpha = 0.5f      // lekko wyszarzamy kafelek
+            } else {
+                dates.text = "${promotion.startDate} – ${promotion.endDate}"
+                itemView.alpha = 1.0f
+            }
 
             // Obrazek
             if (!promotion.imageUrl.isNullOrEmpty()) {
@@ -85,7 +103,6 @@ class PromotionsAdapter(
                 it.visibility = View.VISIBLE
             }
 
-
             val uid = auth.currentUser?.uid
             val promoId = promotion.id
 
@@ -100,7 +117,7 @@ class PromotionsAdapter(
                 ivVoteMinus.alpha = 0.5f
 
                 if (uid == null) {
-                    // niezalogowany - tlyko zabezpieczenie
+                    // niezalogowany - tylko zabezpieczenie
                     ivVotePlus.isEnabled = false
                     ivVoteMinus.isEnabled = false
                     return
@@ -141,14 +158,25 @@ class PromotionsAdapter(
                 // Pozytywna ocena
                 ivVotePlus.setOnClickListener {
                     val ctx = itemView.context
+                    // blokada dla zakończonych promocji
+                    if (isExpired) {
+                        Toast.makeText(ctx, "Ta promocja jest już zakończona", Toast.LENGTH_SHORT)
+                            .show()
+                        return@setOnClickListener
+                    }
                     // nie można głosować na swoją promocję
                     if (promotion.addedBy == uid) {
-                        Toast.makeText(ctx, "Nie możesz ocenić swojej promocji", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(
+                            ctx,
+                            "Nie możesz ocenić swojej promocji",
+                            Toast.LENGTH_SHORT
+                        ).show()
                         return@setOnClickListener
                     }
 
                     val currentVote = (ivVotePlus.tag as? Int) ?: 0
-                    val newRef = db.getReference("promotionVotes").child(promoId).child(uid)
+                    val newRef =
+                        db.getReference("promotionVotes").child(promoId).child(uid)
 
                     if (currentVote == 1) {
                         // kliknięcie drugi raz = cofnięcie głosu
@@ -161,13 +189,24 @@ class PromotionsAdapter(
                 // ocena negatywna
                 ivVoteMinus.setOnClickListener {
                     val ctx = itemView.context
+                    // blokada dla zakończonych promocji
+                    if (isExpired) {
+                        Toast.makeText(ctx, "Ta promocja jest już zakończona", Toast.LENGTH_SHORT)
+                            .show()
+                        return@setOnClickListener
+                    }
                     if (promotion.addedBy == uid) {
-                        Toast.makeText(ctx, "Nie możesz ocenić swojej promocji", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(
+                            ctx,
+                            "Nie możesz ocenić swojej promocji",
+                            Toast.LENGTH_SHORT
+                        ).show()
                         return@setOnClickListener
                     }
 
                     val currentVote = (ivVoteMinus.tag as? Int) ?: 0
-                    val newRef = db.getReference("promotionVotes").child(promoId).child(uid)
+                    val newRef =
+                        db.getReference("promotionVotes").child(promoId).child(uid)
 
                     if (currentVote == -1) {
                         // kliknięcie drugi raz - cofnięcie głosu
@@ -178,6 +217,10 @@ class PromotionsAdapter(
                 }
 
             } else {
+                ivVotePlus?.visibility = View.GONE
+                ivVoteMinus?.visibility = View.GONE
+                tvPlusCount?.visibility = View.GONE
+                tvMinusCount?.visibility = View.GONE
             }
         }
     }

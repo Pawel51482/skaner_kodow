@@ -15,6 +15,9 @@ import com.example.skaner_kodow.databinding.FragmentProductDetailsBinding
 import com.example.skaner_kodow.ui.shoppinglists.ShoppingListsViewModel
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.ValueEventListener
 import java.util.Locale
 
 class ProductDetailsFragment : Fragment() {
@@ -49,6 +52,8 @@ class ProductDetailsFragment : Fragment() {
         binding.textViewProductName.text = productName
         binding.textViewProductBarcode.text = productBarcode
         binding.textViewProductDescription.text = productDescription
+
+        setupFavoriteProduct(productId)
 
         if (productPrice > 0.0) {
             val priceFormatted =
@@ -196,4 +201,47 @@ class ProductDetailsFragment : Fragment() {
                 binding.promoInfoGroup.visibility = View.GONE
             }
     }
+
+    // dodanie do ulubioncyh
+    private fun setupFavoriteProduct(productId: String?) {
+        val uid = FirebaseAuth.getInstance().currentUser?.uid
+        if (uid == null || productId.isNullOrEmpty()) {
+            // brak usera albo brak id – ukryj ikonke
+            binding.ivFavoriteProduct.visibility = View.GONE
+            return
+        }
+
+        val favRef = FirebaseDatabase.getInstance()
+            .getReference("users/$uid/favorites/products/$productId")
+
+        // Odczyt stanu na start, czy produkt jest już w ulubionych
+        favRef.addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val isFav = snapshot.exists()
+                binding.ivFavoriteProduct.tag = isFav
+                binding.ivFavoriteProduct.setImageResource(
+                    if (isFav) R.drawable.ic_heart_filled else R.drawable.ic_heart_outline
+                )
+            }
+
+            override fun onCancelled(error: DatabaseError) {}
+        })
+
+        // Kliknięcie – toggle ulubionych
+        binding.ivFavoriteProduct.setOnClickListener {
+            val currentFlag = binding.ivFavoriteProduct.tag as? Boolean ?: false
+            if (currentFlag) {
+                favRef.setValue(null)
+                binding.ivFavoriteProduct.tag = false
+                binding.ivFavoriteProduct.setImageResource(R.drawable.ic_heart_outline)
+                Toast.makeText(requireContext(), "Usunięto z ulubionych", Toast.LENGTH_SHORT).show()
+            } else {
+                favRef.setValue(true)
+                binding.ivFavoriteProduct.tag = true
+                binding.ivFavoriteProduct.setImageResource(R.drawable.ic_heart_filled)
+                Toast.makeText(requireContext(), "Dodano do ulubionych", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
 }

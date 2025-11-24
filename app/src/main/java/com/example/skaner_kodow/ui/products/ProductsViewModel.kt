@@ -36,8 +36,10 @@ class ProductsViewModel : ViewModel() {
                     p?.copy(id = snap.key ?: "")
                 }.filterNotNull()
 
-                _products.value = list
-                _filteredProducts.value = list
+                val sorted = list.sortedBy { it.name.lowercase() }
+
+                _products.value = sorted
+                _filteredProducts.value = sorted
             }
     }
 

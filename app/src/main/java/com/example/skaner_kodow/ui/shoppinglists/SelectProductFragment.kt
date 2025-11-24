@@ -9,6 +9,7 @@ import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.widget.SearchView
+import androidx.core.os.bundleOf
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.findNavController
@@ -27,6 +28,13 @@ class SelectProductFragment : Fragment() {
     private lateinit var adapter: ProductsAdapter
 
     private var listId: String = ""
+    private var mode: String? = null   // 🔹 NOWE: tryb pracy fragmentu
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        // odbieramy ewentualny tryb (np. "promotion")
+        mode = arguments?.getString("mode")
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -35,7 +43,7 @@ class SelectProductFragment : Fragment() {
     ): View {
         binding = FragmentSelectProductBinding.inflate(inflater, container, false)
 
-        // odbieramy listId przekazane z ShoppingListDetailsFragment
+        // listId nadal tylko do trybu list zakupów
         listId = arguments?.getString("listId") ?: ""
 
         productsViewModel =
@@ -58,9 +66,17 @@ class SelectProductFragment : Fragment() {
         adapter = ProductsAdapter(
             isAdmin = false,
             onProductClick = { product ->
-                askQuantityAndAdd(product)
+                // 🔹 TU ROZDZIELAMY ZACHOWANIE
+                if (mode == "promotion") {
+                    // tryb: wybór produktu dla promocji
+                    returnProductForPromotion(product)
+                } else {
+                    // stary tryb: dodawanie do listy zakupów
+                    askQuantityAndAdd(product)
+                }
             },
             onProductLongClick = { _ ->
+                // nic nie robimy
             }
         )
 
@@ -81,6 +97,19 @@ class SelectProductFragment : Fragment() {
                 return true
             }
         })
+    }
+
+    // 🔹 NOWE: zwrócenie produktu do AddPromotionFragment
+    private fun returnProductForPromotion(product: Product) {
+        parentFragmentManager.setFragmentResult(
+            "selectProductForPromotion",
+            bundleOf(
+                "productName" to product.name,
+                "productBarcode" to product.barcode,
+                "productImageUrl" to product.imageUrl
+            )
+        )
+        findNavController().popBackStack()
     }
 
     private fun askQuantityAndAdd(product: Product) {

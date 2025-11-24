@@ -52,7 +52,6 @@ class PromotionsFragment : Fragment() {
             adapter.submitFavorites(favs)
         }
 
-
         return binding.root
     }
 
@@ -96,21 +95,7 @@ class PromotionsFragment : Fragment() {
             .setItems(options) { _, which ->
                 when (which) {
                     0 -> {
-                        // edytowanie - przechodzimy z danymi
-                        val bundle = Bundle().apply {
-                            putString("id", promotion.id)
-                            putString("title", promotion.title)
-                            putString("description", promotion.description)
-                            putString("barcode", promotion.barcode)
-                            putString("startDate", promotion.startDate)
-                            putString("endDate", promotion.endDate)
-                            putString("addedBy", promotion.addedBy)
-                            putString("imageUrl", promotion.imageUrl)
-                        }
-                        findNavController().navigate(
-                            R.id.editPromotionFragment,
-                            bundle
-                        )
+                        editPromotionIfAllowed(promotion)
                     }
                     1 -> {
                         checkPermissionAndDelete(promotion)
@@ -132,7 +117,6 @@ class PromotionsFragment : Fragment() {
             val isOwner = promotion.addedBy == currentUid
 
             if (!(isAdmin || isOwner)) {
-                //  użytkownik nie ma uprawnień - wyszarzamy obie opcje
                 val listView = dialog.listView
                 listView?.post {
                     for (i in 0 until listView.childCount) {
@@ -144,8 +128,6 @@ class PromotionsFragment : Fragment() {
             }
         }
     }
-
-
 
     private fun checkPermissionAndDelete(promotion: Promotion) {
         val currentUser = FirebaseAuth.getInstance().currentUser ?: return
@@ -174,6 +156,45 @@ class PromotionsFragment : Fragment() {
                 Toast.makeText(
                     requireContext(),
                     "Możesz usunąć tylko swoje promocje",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
+    }
+
+    private fun editPromotionIfAllowed(promotion: Promotion) {
+        val currentUser = FirebaseAuth.getInstance().currentUser ?: return
+        val currentUid = currentUser.uid
+
+        val usersRef = FirebaseDatabase.getInstance()
+            .getReference("users")
+            .child(currentUid)
+
+        usersRef.get().addOnSuccessListener { snap ->
+            val role = snap.child("role").getValue(String::class.java)
+            val isAdmin = role == "admin"
+            val isOwner = promotion.addedBy == currentUid
+
+            if (isAdmin || isOwner) {
+                // jeśli admin lub user który stowrzył promocje może przejść do edycji
+                val bundle = Bundle().apply {
+                    putString("id", promotion.id)
+                    putString("title", promotion.title)
+                    putString("description", promotion.description)
+                    putString("barcode", promotion.barcode)
+                    putString("startDate", promotion.startDate)
+                    putString("endDate", promotion.endDate)
+                    putString("addedBy", promotion.addedBy)
+                    putString("imageUrl", promotion.imageUrl)
+                }
+                findNavController().navigate(
+                    R.id.editPromotionFragment,
+                    bundle
+                )
+            } else {
+                Toast.makeText(
+                    requireContext(),
+                    "Możesz edytować tylko swoje promocje",
                     Toast.LENGTH_SHORT
                 ).show()
             }
