@@ -49,8 +49,7 @@ class PromotionDetailsFragment : Fragment() {
             Glide.with(this)
                 .load(imageUrl)
                 .into(binding.ivImage)
-
-            // 👉 kliknięcie w miniaturkę otwiera fullscreen z zoomem
+            
             binding.ivImage.setOnClickListener {
                 com.example.skaner_kodow.utils.ImagePreview(imageUrl)
                     .show(parentFragmentManager, "promo_image_preview")
