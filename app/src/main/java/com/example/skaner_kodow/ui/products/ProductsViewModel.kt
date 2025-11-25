@@ -26,21 +26,29 @@ class ProductsViewModel : ViewModel() {
     val filteredProducts: LiveData<List<Product>> get() = _filteredProducts
 
     private val ref = FirebaseDatabase.getInstance().getReference("products")
+    private var productsListener: ValueEventListener? = null
 
     fun fetchProducts() {
-        ref.get()
-            .addOnSuccessListener { snapshot ->
-                val list = snapshot.children.map { snap ->
+        if (productsListener != null) return
+
+        productsListener = object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val list = snapshot.children.mapNotNull { snap ->
                     val p = snap.getValue(Product::class.java)
                     // wstrzykujemy klucz jako id
                     p?.copy(id = snap.key ?: "")
-                }.filterNotNull()
+                }
 
                 val sorted = list.sortedBy { it.name.lowercase() }
 
                 _products.value = sorted
                 _filteredProducts.value = sorted
             }
+
+            override fun onCancelled(error: DatabaseError) {
+            }
+        }
+        ref.addValueEventListener(productsListener as ValueEventListener)
     }
 
     fun filterProducts(query: String) {
@@ -56,6 +64,11 @@ class ProductsViewModel : ViewModel() {
         ref.child(id).removeValue()
     }
 
+    override fun onCleared() {
+        super.onCleared()
+        productsListener?.let { ref.removeEventListener(it) }
+        productsListener = null
+    }
 
     // Ulubione
     private val auth = FirebaseAuth.getInstance()
