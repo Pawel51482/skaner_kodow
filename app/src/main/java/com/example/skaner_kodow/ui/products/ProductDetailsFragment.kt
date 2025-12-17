@@ -19,6 +19,8 @@ import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
 import java.util.Locale
+import java.text.SimpleDateFormat
+import java.util.Date
 
 class ProductDetailsFragment : Fragment() {
 
@@ -190,7 +192,7 @@ class ProductDetailsFragment : Fragment() {
                 var matched: com.example.skaner_kodow.ui.promotions.Promotion? = null
                 for (child in snap.children) {
                     val promo = child.getValue(com.example.skaner_kodow.ui.promotions.Promotion::class.java)
-                    if (promo != null && promo.barcode == barcode) {
+                    if (promo != null && promo.barcode == barcode && isPromotionActive(promo)) {
                         matched = promo.copy(id = child.key ?: "")
                         break
                     }
@@ -207,6 +209,30 @@ class ProductDetailsFragment : Fragment() {
             .addOnFailureListener {
                 binding.promoInfoGroup.visibility = View.GONE
             }
+    }
+
+    // sprawdzamy czy promocja aktywna
+    private fun isPromotionActive(promo: com.example.skaner_kodow.ui.promotions.Promotion): Boolean {
+        // jeśli nie ma dat – traktujemy jako nieaktywną
+        if (promo.startDate.isBlank() || promo.endDate.isBlank()) return false
+
+        return try {
+            val sdf = SimpleDateFormat("dd-MM-yyyy", Locale.getDefault())
+            sdf.isLenient = false
+
+            val today = sdf.parse(sdf.format(Date()))
+            val start = sdf.parse(promo.startDate)
+            val end = sdf.parse(promo.endDate)
+
+            if (today == null || start == null || end == null) {
+                false
+            } else {
+                // start <= today <= end
+                !today.before(start) && !today.after(end)
+            }
+        } catch (e: Exception) {
+            false
+        }
     }
 
     // dodanie do ulubioncyh
