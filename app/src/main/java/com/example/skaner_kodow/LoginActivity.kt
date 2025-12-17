@@ -3,13 +3,19 @@ package com.example.skaner_kodow
 import android.content.Intent
 import android.os.Bundle
 import android.util.Patterns
-import android.view.Gravity
+import android.view.View
 import android.widget.Button
 import android.widget.EditText
+import android.widget.ProgressBar
 import android.widget.TextView
-import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import com.google.firebase.auth.*
+import androidx.core.widget.doAfterTextChanged
+import com.google.android.material.snackbar.Snackbar
+import com.google.android.material.textfield.TextInputLayout
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseAuthException
+import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
+import com.google.firebase.auth.FirebaseAuthInvalidUserException
 
 class LoginActivity : AppCompatActivity() {
 
@@ -17,20 +23,30 @@ class LoginActivity : AppCompatActivity() {
     private lateinit var etPassword: EditText
     private lateinit var btnLogin: Button
     private lateinit var tvRegister: TextView
-    private lateinit var firebaseAuth: FirebaseAuth
     private lateinit var tvForgotPassword: TextView
+    private lateinit var firebaseAuth: FirebaseAuth
+
+    private lateinit var tilEmail: TextInputLayout
+    private lateinit var tilPassword: TextInputLayout
+    private lateinit var tvAuthMessage: TextView
+    private lateinit var progress: ProgressBar
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         firebaseAuth = FirebaseAuth.getInstance()
-
         val currentUser = firebaseAuth.currentUser
         if (currentUser != null) {
             navigateToMainActivity()
+            return
         }
 
         setContentView(R.layout.activity_login)
+
+        tilEmail = findViewById(R.id.tilEmail)
+        tilPassword = findViewById(R.id.tilPassword)
+        tvAuthMessage = findViewById(R.id.tvAuthMessage)
+        progress = findViewById(R.id.progressLogin)
 
         etEmail = findViewById(R.id.etEmail)
         etPassword = findViewById(R.id.etPassword)
@@ -38,56 +54,100 @@ class LoginActivity : AppCompatActivity() {
         tvRegister = findViewById(R.id.tvRegister)
         tvForgotPassword = findViewById(R.id.tvForgotPassword)
 
-        // Logowanie użytkownika
-        btnLogin.setOnClickListener {
-            val email = etEmail.text.toString().trim()
-            val password = etPassword.text.toString().trim()
+        etEmail.doAfterTextChanged { clearErrors() }
+        etPassword.doAfterTextChanged { clearErrors() }
 
-            // lokalna walidacja, zanim pójdzie request do Firebase
-            if (email.isEmpty() || password.isEmpty()) {
-                showToast("Proszę wprowadzić wszystkie dane")
-                return@setOnClickListener
-            }
-            if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
-                showToast("Nieprawidłowy adres e-mail")
-                return@setOnClickListener
-            }
+        btnLogin.setOnClickListener { attemptLogin() }
 
-            firebaseAuth.signInWithEmailAndPassword(email, password)
-                .addOnCompleteListener { task ->
-                    if (task.isSuccessful) {
-                        showToast("Zalogowano pomyślnie")
-                        navigateToMainActivity()
-                    } else {
-                        showToast(polishAuthMessage(task.exception))
-                    }
-                }
-        }
-
-        // Przejście do rejestracji
         tvRegister.setOnClickListener {
-            val intent = Intent(this, RegisterActivity::class.java)
-            startActivity(intent)
+            startActivity(Intent(this, RegisterActivity::class.java))
         }
 
-        // Resetowanie hasła
-        tvForgotPassword.setOnClickListener {
-            val email = etEmail.text.toString().trim()
+        tvForgotPassword.setOnClickListener { attemptResetPassword() }
+    }
 
-            if (email.isEmpty()) {
-                showToast("Podaj adres e-mail, aby zresetować hasło")
-            } else if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
-                showToast("Nieprawidłowy adres e-mail")
-            } else {
-                firebaseAuth.sendPasswordResetEmail(email)
-                    .addOnSuccessListener {
-                        showToast("Wysłano link resetujący hasło na $email")
-                    }
-                    .addOnFailureListener { e ->
-                        showToast("Błąd przy wysyłaniu linku: ${e.message}")
-                    }
+    private fun attemptLogin() {
+        clearErrors()
+
+        val email = etEmail.text.toString().trim()
+        val password = etPassword.text.toString().trim()
+
+        var ok = true
+
+        if (email.isEmpty()) {
+            tilEmail.error = "Podaj adres e-mail"
+            ok = false
+        } else if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+            tilEmail.error = "Nieprawidłowy adres e-mail"
+            ok = false
+        }
+
+        if (password.isEmpty()) {
+            tilPassword.error = "Podaj hasło"
+            ok = false
+        }
+
+        if (!ok) return
+
+        setLoading(true)
+
+        firebaseAuth.signInWithEmailAndPassword(email, password)
+            .addOnCompleteListener { task ->
+                setLoading(false)
+                if (task.isSuccessful) {
+                    // bez Toastów
+                    Snackbar.make(findViewById(R.id.rootLogin), "Zalogowano pomyślnie", Snackbar.LENGTH_SHORT).show()
+                    navigateToMainActivity()
+                } else {
+                    showFormMessage(polishAuthMessage(task.exception))
+                }
             }
+    }
+
+    private fun attemptResetPassword() {
+        clearErrors()
+
+        val email = etEmail.text.toString().trim()
+
+        if (email.isEmpty()) {
+            tilEmail.error = "Podaj adres e-mail, aby zresetować hasło"
+            etEmail.requestFocus()
+            return
         }
+        if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+            tilEmail.error = "Nieprawidłowy adres e-mail"
+            etEmail.requestFocus()
+            return
+        }
+
+        setLoading(true)
+
+        firebaseAuth.sendPasswordResetEmail(email)
+            .addOnSuccessListener {
+                setLoading(false)
+                Snackbar.make(findViewById(R.id.rootLogin), "Wysłano link resetujący na $email", Snackbar.LENGTH_LONG).show()
+            }
+            .addOnFailureListener {
+                setLoading(false)
+                showFormMessage("Nie udało się wysłać linku resetującego. Spróbuj ponownie.")
+            }
+    }
+
+    private fun setLoading(loading: Boolean) {
+        btnLogin.isEnabled = !loading
+        progress.visibility = if (loading) View.VISIBLE else View.GONE
+    }
+
+    private fun clearErrors() {
+        tilEmail.error = null
+        tilPassword.error = null
+        tvAuthMessage.visibility = View.GONE
+        tvAuthMessage.text = ""
+    }
+
+    private fun showFormMessage(msg: String) {
+        tvAuthMessage.text = msg
+        tvAuthMessage.visibility = View.VISIBLE
     }
 
     private fun navigateToMainActivity() {
@@ -96,13 +156,7 @@ class LoginActivity : AppCompatActivity() {
         finish()
     }
 
-    private fun showToast(msg: String) {
-        val t = Toast.makeText(this, msg, Toast.LENGTH_SHORT)
-        t.setGravity(Gravity.CENTER, 0, 0)
-        t.show()
-    }
-
-    // Tłumaczenie wyjątków
+    // tłumaczenie wyjątków Firebase na PL
     private fun polishAuthMessage(e: Exception?): String {
         val code = when (e) {
             is FirebaseAuthInvalidCredentialsException -> "ERROR_INVALID_CREDENTIALS"

@@ -1,15 +1,17 @@
 package com.example.skaner_kodow
 
-import android.annotation.SuppressLint
 import android.content.Intent
 import android.os.Bundle
-import android.view.Gravity
 import android.util.Patterns
+import android.view.View
 import android.widget.Button
 import android.widget.EditText
+import android.widget.ProgressBar
 import android.widget.TextView
-import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.widget.doAfterTextChanged
+import com.google.android.material.snackbar.Snackbar
+import com.google.android.material.textfield.TextInputLayout
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuthException
 import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
@@ -23,13 +25,29 @@ class RegisterActivity : AppCompatActivity() {
     private lateinit var etPassword: EditText
     private lateinit var etConfirmPassword: EditText
     private lateinit var btnRegister: Button
-    private lateinit var firebaseAuth: FirebaseAuth
     private lateinit var tvLogin: TextView
 
-    @SuppressLint("MissingInflatedId")
+    private lateinit var tilEmail: TextInputLayout
+    private lateinit var tilPassword: TextInputLayout
+    private lateinit var tilConfirmPassword: TextInputLayout
+    private lateinit var tvAuthMessage: TextView
+    private lateinit var progress: ProgressBar
+
+    private lateinit var firebaseAuth: FirebaseAuth
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        firebaseAuth = FirebaseAuth.getInstance()
+        firebaseAuth.setLanguageCode("pl")
+
         setContentView(R.layout.activity_register)
+
+        tilEmail = findViewById(R.id.tilEmail)
+        tilPassword = findViewById(R.id.tilPassword)
+        tilConfirmPassword = findViewById(R.id.tilConfirmPassword)
+        tvAuthMessage = findViewById(R.id.tvAuthMessage)
+        progress = findViewById(R.id.progressRegister)
 
         etEmail = findViewById(R.id.etEmail)
         etPassword = findViewById(R.id.etPassword)
@@ -37,53 +55,66 @@ class RegisterActivity : AppCompatActivity() {
         btnRegister = findViewById(R.id.btnRegister)
         tvLogin = findViewById(R.id.tvLogin)
 
-        firebaseAuth = FirebaseAuth.getInstance()
-        firebaseAuth.setLanguageCode("pl")
+        etEmail.doAfterTextChanged { clearErrors() }
+        etPassword.doAfterTextChanged { clearErrors() }
+        etConfirmPassword.doAfterTextChanged { clearErrors() }
 
-        btnRegister.setOnClickListener {
-            val email = etEmail.text.toString().trim()
-            val password = etPassword.text.toString().trim()
-            val confirmPassword = etConfirmPassword.text.toString().trim()
-
-            // kolejność walidacji
-            if (email.isEmpty() || password.isEmpty() || confirmPassword.isEmpty()) {
-                showToast("Proszę wypełnić wszystkie pola")
-                return@setOnClickListener
-            }
-            if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
-                showToast("Nieprawidłowy adres e-mail")
-                return@setOnClickListener
-            }
-            if (password.length < 6) {
-                showToast("Hasło jest zbyt krótkie (min. 6 znaków).")
-                return@setOnClickListener
-            }
-            if (password != confirmPassword) {
-                showToast("Hasła się nie zgadzają")
-                return@setOnClickListener
-            }
-
-            // Jeśli lokalna walidacja przeszła, dopiero wtedy wołamy Firebase
-            firebaseAuth.createUserWithEmailAndPassword(email, password)
-                .addOnCompleteListener { task ->
-                    if (task.isSuccessful) {
-                        // po utworzeniu konta dopisz profil w /users/{uid} jeśli nie istnieje
-                        createUserProfile()
-
-                        showToast("Rejestracja udana")
-                        val intent = Intent(this, LoginActivity::class.java)
-                        startActivity(intent)
-                        finish()
-                    } else {
-                        showToast(polishAuthMessage(task.exception))
-                    }
-                }
-        }
+        btnRegister.setOnClickListener { attemptRegister() }
 
         tvLogin.setOnClickListener {
-            val intent = Intent(this, LoginActivity::class.java)
-            startActivity(intent)
+            startActivity(Intent(this, LoginActivity::class.java))
         }
+    }
+
+    private fun attemptRegister() {
+        clearErrors()
+
+        val email = etEmail.text.toString().trim()
+        val password = etPassword.text.toString().trim()
+        val confirmPassword = etConfirmPassword.text.toString().trim()
+
+        var ok = true
+
+        if (email.isEmpty()) {
+            tilEmail.error = "Podaj adres e-mail"
+            ok = false
+        } else if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+            tilEmail.error = "Nieprawidłowy adres e-mail"
+            ok = false
+        }
+
+        if (password.isEmpty()) {
+            tilPassword.error = "Podaj hasło"
+            ok = false
+        } else if (password.length < 6) {
+            tilPassword.error = "Hasło musi mieć min. 6 znaków"
+            ok = false
+        }
+
+        if (confirmPassword.isEmpty()) {
+            tilConfirmPassword.error = "Powtórz hasło"
+            ok = false
+        } else if (password != confirmPassword) {
+            tilConfirmPassword.error = "Hasła nie są takie same"
+            ok = false
+        }
+
+        if (!ok) return
+
+        setLoading(true)
+
+        firebaseAuth.createUserWithEmailAndPassword(email, password)
+            .addOnCompleteListener { task ->
+                setLoading(false)
+                if (task.isSuccessful) {
+                    createUserProfile()
+                    Snackbar.make(findViewById(R.id.rootRegister), "Konto utworzone. Możesz się zalogować.", Snackbar.LENGTH_LONG).show()
+                    startActivity(Intent(this, LoginActivity::class.java))
+                    finish()
+                } else {
+                    showFormMessage(polishAuthMessage(task.exception))
+                }
+            }
     }
 
     // Tworzy wpis w /users/{uid} z email i role:"user"
@@ -94,38 +125,44 @@ class RegisterActivity : AppCompatActivity() {
         usersRef.get()
             .addOnSuccessListener { snap ->
                 if (!snap.exists()) {
-                    val data = mapOf(
+                    val map = hashMapOf(
                         "email" to (user.email ?: ""),
                         "role" to "user"
                     )
-                    usersRef.setValue(data)
+                    usersRef.setValue(map)
                 }
             }
             .addOnFailureListener {
-                // cicho ignorujemy błąd — nie blokujemy rejestracji
+                // celowo bez blokowania rejestracji
             }
     }
 
-    private fun showToast(msg: String) {
-        val t = Toast.makeText(this, msg, Toast.LENGTH_SHORT)
-        t.setGravity(Gravity.CENTER, 0, 0)
-        t.show()
+    private fun setLoading(loading: Boolean) {
+        btnRegister.isEnabled = !loading
+        progress.visibility = if (loading) View.VISIBLE else View.GONE
     }
 
-    // Tłumaczenie wyjątków na Polskie
+    private fun clearErrors() {
+        tilEmail.error = null
+        tilPassword.error = null
+        tilConfirmPassword.error = null
+        tvAuthMessage.visibility = View.GONE
+        tvAuthMessage.text = ""
+    }
+
+    private fun showFormMessage(msg: String) {
+        tvAuthMessage.text = msg
+        tvAuthMessage.visibility = View.VISIBLE
+    }
+
+    // Tłumaczenie wyjątków na polskie
     private fun polishAuthMessage(e: Exception?): String {
         return when (e) {
             is FirebaseAuthWeakPasswordException -> "Hasło jest zbyt krótkie (min. 6 znaków)"
             is FirebaseAuthInvalidCredentialsException -> "Nieprawidłowy adres e-mail"
             is FirebaseAuthUserCollisionException -> "Konto z tym adresem już istnieje"
-            is FirebaseAuthException -> when (e.errorCode) {
-                "ERROR_INVALID_EMAIL" -> "Nieprawidłowy adres e-mail"
-                "ERROR_EMAIL_ALREADY_IN_USE" -> "Ten e-mail jest już zajęty"
-                "ERROR_OPERATION_NOT_ALLOWED" -> "Operacja niedostępna. Skontaktuj się z administratorem"
-                "ERROR_WEAK_PASSWORD" -> "Hasło jest zbyt krótkie (min. 6 znaków)"
-                else -> "Wystąpił błąd: ${e.errorCode.replace('_',' ').lowercase()}"
-            }
-            else -> "Wystąpił nieoczekiwany błąd. Spróbuj ponownie."
+            is FirebaseAuthException -> "Rejestracja nie powiodła się. Spróbuj ponownie."
+            else -> "Rejestracja nie powiodła się. Spróbuj ponownie."
         }
     }
 }
